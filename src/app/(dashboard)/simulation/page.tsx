@@ -124,7 +124,7 @@ export default function SimulationPage() {
     setScenarioInput(item.title)
   }
 
-  const useExamplePrompt = (prompt: string) => {
+  const handleExamplePrompt = (prompt: string) => {
     setScenarioInput(prompt)
   }
 
@@ -182,7 +182,7 @@ export default function SimulationPage() {
                 {examplePrompts.map((prompt, index) => (
                   <button
                     key={index}
-                    onClick={() => useExamplePrompt(prompt)}
+                    onClick={() => handleExamplePrompt(prompt)}
                     className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-secondary rounded-full transition-colors"
                   >
                     {prompt}

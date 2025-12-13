@@ -192,16 +192,17 @@ export default function MarketPage() {
   // Fetch graph data when selectedTicker changes
   useEffect(() => {
     if (!selectedTicker || viewMode !== 'graph') return
+    const ticker = selectedTicker // Capture for async closure
 
     async function fetchGraphData() {
       setGraphLoading(true)
       try {
-        const res = await fetch(`/api/supply-chain/${selectedTicker}`)
+        const res = await fetch(`/api/supply-chain/${ticker}`)
         if (res.ok) {
           const data = await res.json()
           setGraphData({
-            centerTicker: selectedTicker,
-            centerName: data.name || selectedTicker,
+            centerTicker: ticker,
+            centerName: data.name || ticker,
             suppliers: (data.suppliers || []).map((s: any, idx: number) => ({
               id: s.id || `supplier-${idx}`,
               ticker: s.ticker,
@@ -221,8 +222,8 @@ export default function MarketPage() {
           })
         } else {
           setGraphData({
-            centerTicker: selectedTicker,
-            centerName: selectedTicker,
+            centerTicker: ticker,
+            centerName: ticker,
             suppliers: [],
             customers: [],
           })
@@ -230,8 +231,8 @@ export default function MarketPage() {
       } catch (error) {
         console.error('Error fetching graph data:', error)
         setGraphData({
-          centerTicker: selectedTicker,
-          centerName: selectedTicker,
+          centerTicker: ticker,
+          centerName: ticker,
           suppliers: [],
           customers: [],
         })

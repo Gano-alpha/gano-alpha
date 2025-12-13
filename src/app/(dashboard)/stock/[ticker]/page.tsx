@@ -51,6 +51,7 @@ interface SupplyChainNode {
   id: string
   ticker: string
   name: string
+  type: 'supplier' | 'customer'
   relation: string
   confidence: number
 }
@@ -122,6 +123,7 @@ export default function StockPage() {
               id: s.id || `supplier-${idx}`,
               ticker: s.ticker,
               name: s.name,
+              type: 'supplier' as const,
               relation: s.relation || 'Supplier',
               confidence: s.confidence || 0.8,
             })),
@@ -129,6 +131,7 @@ export default function StockPage() {
               id: c.id || `customer-${idx}`,
               ticker: c.ticker,
               name: c.name,
+              type: 'customer' as const,
               relation: c.relation || 'Customer',
               confidence: c.confidence || 0.8,
             })),

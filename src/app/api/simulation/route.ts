@@ -80,7 +80,7 @@ async function analyzeScenario(
   const mentionedTickers = scenario.match(tickerPattern) || []
 
   // Deduplicate tickers
-  const uniqueTickers = [...new Set(mentionedTickers)]
+  const uniqueTickers = Array.from(new Set(mentionedTickers))
 
   if (uniqueTickers.length === 0) {
     return {
