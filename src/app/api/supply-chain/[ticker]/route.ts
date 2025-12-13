@@ -49,45 +49,14 @@ export async function GET(
       next: { revalidate: 300 },
     })
 
-    if (!response.ok) {
-      // If backend is not available, return mock data for development
-      if (response.status === 404 || response.status >= 500) {
-        return NextResponse.json(getMockData(ticker))
-      }
-      throw new Error(`Backend returned ${response.status}`)
+    if (response.ok) {
+      // Backend returns data in the correct format, pass it through
+      const data = await response.json()
+      return NextResponse.json(data)
     }
 
-    const data: SupplyChainEdge[] = await response.json()
-
-    // Transform backend data to frontend format
-    const suppliers = data
-      .filter((edge) => edge.target_ticker === ticker)
-      .map((edge, index) => ({
-        id: `sup-${index}`,
-        ticker: edge.source_ticker,
-        name: edge.source_name,
-        relation: edge.relation_type,
-        confidence: edge.confidence,
-      }))
-
-    const customers = data
-      .filter((edge) => edge.source_ticker === ticker)
-      .map((edge, index) => ({
-        id: `cust-${index}`,
-        ticker: edge.target_ticker,
-        name: edge.target_name,
-        relation: edge.relation_type,
-        confidence: edge.confidence,
-      }))
-
-    const result: SupplyChainResponse = {
-      ticker,
-      name: getCompanyName(ticker),
-      suppliers,
-      customers,
-    }
-
-    return NextResponse.json(result)
+    // If backend fails, return mock data
+    return NextResponse.json(getMockData(ticker))
   } catch (error) {
     console.error('Error fetching supply chain data:', error)
     // Return mock data on error for development

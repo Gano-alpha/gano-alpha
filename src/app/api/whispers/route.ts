@@ -25,17 +25,21 @@ export async function GET(request: NextRequest) {
   const severity = searchParams.get('severity') // Filter by severity
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/whispers?limit=${limit}`, {
+    let url = `${BACKEND_URL}/api/whispers?limit=${limit}`
+    if (ticker) url += `&ticker=${ticker}`
+    if (severity) url += `&severity=${severity}`
+
+    const response = await fetch(url, {
       headers: { 'Content-Type': 'application/json' },
       next: { revalidate: 60 },
     })
 
-    if (!response.ok) {
-      return NextResponse.json(getMockWhispers(limit, ticker, severity))
+    if (response.ok) {
+      const data = await response.json()
+      return NextResponse.json(data)
     }
 
-    const data = await response.json()
-    return NextResponse.json(data)
+    return NextResponse.json(getMockWhispers(limit, ticker, severity))
   } catch (error) {
     console.error('Error fetching whispers:', error)
     return NextResponse.json(getMockWhispers(limit, ticker, severity))

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.138.246.157:8000'
+
 interface StockResult {
   ticker: string
   name: string
@@ -7,7 +9,7 @@ interface StockResult {
   signal?: 'BUY' | 'HOLD' | 'SELL'
 }
 
-// Stock database for search
+// Stock database for search (fallback)
 const stocks: StockResult[] = [
   { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Semiconductors', signal: 'BUY' },
   { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Consumer Electronics', signal: 'HOLD' },
@@ -33,22 +35,39 @@ const stocks: StockResult[] = [
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const query = searchParams.get('q')?.toLowerCase() || ''
+  const query = searchParams.get('q') || ''
   const limit = parseInt(searchParams.get('limit') || '10')
   const sector = searchParams.get('sector')
 
+  try {
+    let url = `${BACKEND_URL}/api/stocks/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    if (sector) url += `&sector=${encodeURIComponent(sector)}`
+
+    const response = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      next: { revalidate: 300 },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return NextResponse.json(data)
+    }
+  } catch (error) {
+    console.error('Error fetching stocks:', error)
+  }
+
+  // Fallback to local data
   let results = stocks
 
-  // Filter by query
   if (query) {
+    const q = query.toLowerCase()
     results = results.filter(
       (stock) =>
-        stock.ticker.toLowerCase().includes(query) ||
-        stock.name.toLowerCase().includes(query)
+        stock.ticker.toLowerCase().includes(q) ||
+        stock.name.toLowerCase().includes(q)
     )
   }
 
-  // Filter by sector
   if (sector) {
     results = results.filter((stock) =>
       stock.sector.toLowerCase().includes(sector.toLowerCase())

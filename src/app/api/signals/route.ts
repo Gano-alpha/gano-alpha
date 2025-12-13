@@ -24,12 +24,18 @@ export async function GET(request: NextRequest) {
       next: { revalidate: 60 }, // Cache for 1 minute
     })
 
-    if (!response.ok) {
-      return NextResponse.json(getMockSignals(limit, filter))
+    if (response.ok) {
+      const data = await response.json()
+      // Filter by signal type if needed
+      if (filter !== 'all') {
+        return NextResponse.json(
+          data.filter((s: Signal) => s.signal.toLowerCase() === filter.toLowerCase())
+        )
+      }
+      return NextResponse.json(data)
     }
 
-    const data = await response.json()
-    return NextResponse.json(data)
+    return NextResponse.json(getMockSignals(limit, filter))
   } catch (error) {
     console.error('Error fetching signals:', error)
     return NextResponse.json(getMockSignals(limit, filter))
