@@ -17,9 +17,17 @@ import {
   Network,
 } from 'lucide-react'
 
+interface User {
+  name: string
+  initials: string
+  plan: string
+}
+
 interface SidebarProps {
   collapsed?: boolean
   onToggle?: () => void
+  user?: User
+  alertCount?: number
 }
 
 const navigation = [
@@ -75,8 +83,21 @@ const secondaryNavigation = [
   },
 ]
 
-export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+const defaultUser: User = {
+  name: 'John Doe',
+  initials: 'JD',
+  plan: 'Pro Plan',
+}
+
+export function Sidebar({ collapsed = false, onToggle, user = defaultUser, alertCount = 3 }: SidebarProps) {
   const pathname = usePathname()
+
+  // Create navigation with dynamic alert count
+  const navItems = navigation.map(item =>
+    item.name === 'Alerts' && alertCount > 0
+      ? { ...item, badge: alertCount }
+      : item
+  )
 
   return (
     <aside
@@ -110,7 +131,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
       {/* Primary Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navigation.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
@@ -182,12 +203,12 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           )}
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-teal-400 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-medium">JD</span>
+            <span className="text-white text-sm font-medium">{user.initials}</span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-primary truncate">John Doe</p>
-              <p className="text-xs text-muted truncate">Pro Plan</p>
+              <p className="text-sm font-medium text-primary truncate">{user.name}</p>
+              <p className="text-xs text-muted truncate">{user.plan}</p>
             </div>
           )}
           {!collapsed && (

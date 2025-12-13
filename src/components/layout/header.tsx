@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 interface HeaderProps {
   title?: string
   subtitle?: string
+  notificationCount?: number
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, notificationCount = 3 }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false)
 
   return (
@@ -49,9 +50,11 @@ export function Header({ title, subtitle }: HeaderProps) {
         {/* Notifications */}
         <Button variant="ghost" size="icon-sm" className="relative">
           <Bell className="h-4 w-4" />
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-sell text-white text-[10px] font-medium rounded-full flex items-center justify-center">
-            3
-          </span>
+          {notificationCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-sell text-white text-[10px] font-medium rounded-full flex items-center justify-center">
+              {notificationCount > 9 ? '9+' : notificationCount}
+            </span>
+          )}
         </Button>
 
         {/* Upgrade CTA (for free users) */}
