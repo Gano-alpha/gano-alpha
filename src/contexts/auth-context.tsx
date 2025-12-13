@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
+  signup: () => Promise<{ success: boolean; error?: string }>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -23,6 +23,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const AUTH_STORAGE_KEY = 'gano_auth'
 const USERS_STORAGE_KEY = 'gano_users'
+
+// Pre-defined test account - signups are closed
+const ALLOWED_USERS: Record<string, { password: string; name: string; plan: string }> = {
+  'test@ganoalpha.com': { password: 'GanoAlpha2024!', name: 'Test User', plan: 'pro' },
+  'rahul@ganoalpha.com': { password: 'GanoAdmin2024!', name: 'Rahul Dandamudi', plan: 'enterprise' },
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -59,18 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, loading, pathname, router])
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Get stored users
-    const usersJson = localStorage.getItem(USERS_STORAGE_KEY)
-    const users: Record<string, { password: string; name: string; plan: string }> = usersJson ? JSON.parse(usersJson) : {}
-
-    // Check if user exists
-    const storedUser = users[email.toLowerCase()]
-    if (!storedUser) {
-      return { success: false, error: 'No account found with this email' }
+    // Only allow pre-defined users (signups are closed)
+    const allowedUser = ALLOWED_USERS[email.toLowerCase()]
+    if (!allowedUser) {
+      return { success: false, error: 'Access denied. Signups are currently closed.' }
     }
 
-    // Check password (in production, this would be done server-side with proper hashing)
-    if (storedUser.password !== password) {
+    // Check password
+    if (allowedUser.password !== password) {
       return { success: false, error: 'Incorrect password' }
     }
 
@@ -78,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userData: User = {
       id: email.toLowerCase(),
       email: email.toLowerCase(),
-      name: storedUser.name,
-      plan: storedUser.plan as 'free' | 'pro' | 'enterprise',
+      name: allowedUser.name,
+      plan: allowedUser.plan as 'free' | 'pro' | 'enterprise',
     }
 
     setUser(userData)
@@ -88,36 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true }
   }
 
-  const signup = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
-    // Get stored users
-    const usersJson = localStorage.getItem(USERS_STORAGE_KEY)
-    const users: Record<string, { password: string; name: string; plan: string }> = usersJson ? JSON.parse(usersJson) : {}
-
-    // Check if user already exists
-    if (users[email.toLowerCase()]) {
-      return { success: false, error: 'An account with this email already exists' }
-    }
-
-    // Create new user
-    users[email.toLowerCase()] = {
-      password,
-      name,
-      plan: 'pro', // Default to pro plan for demo
-    }
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users))
-
-    // Create session
-    const userData: User = {
-      id: email.toLowerCase(),
-      email: email.toLowerCase(),
-      name,
-      plan: 'pro',
-    }
-
-    setUser(userData)
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData))
-
-    return { success: true }
+  const signup = async (): Promise<{ success: boolean; error?: string }> => {
+    // Signups are closed - only pre-defined users can access the platform
+    return { success: false, error: 'Signups are currently closed. Please contact admin for access.' }
   }
 
   const logout = () => {
