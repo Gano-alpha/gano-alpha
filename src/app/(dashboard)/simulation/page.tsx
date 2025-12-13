@@ -12,10 +12,6 @@ import {
   AlertTriangle,
   TrendingDown,
   TrendingUp,
-  Globe,
-  Factory,
-  Ship,
-  Cpu,
   Loader2,
   ChevronRight,
   BarChart3,
@@ -25,200 +21,111 @@ import {
   Sparkles,
 } from 'lucide-react'
 
-// Predefined scenario templates
-const scenarioTemplates = [
-  {
-    id: 'taiwan',
-    title: 'Taiwan Strait Crisis',
-    description: 'Major disruption to semiconductor manufacturing',
-    icon: Globe,
-    severity: 'critical' as const,
-    prompt: 'China blockades Taiwan, disrupting TSMC chip production for 6 months',
-  },
-  {
-    id: 'earthquake',
-    title: 'Japan Earthquake',
-    description: 'Natural disaster affecting key suppliers',
-    icon: AlertTriangle,
-    severity: 'high' as const,
-    prompt: 'Major earthquake hits Japan, disrupting automotive and electronics supply chains',
-  },
-  {
-    id: 'shipping',
-    title: 'Suez Canal Blockage',
-    description: 'Global shipping route disruption',
-    icon: Ship,
-    severity: 'medium' as const,
-    prompt: 'Suez Canal blocked for 3 weeks, causing global shipping delays',
-  },
-  {
-    id: 'chips',
-    title: 'Chip Shortage 2.0',
-    description: 'Severe semiconductor supply constraints',
-    icon: Cpu,
-    severity: 'high' as const,
-    prompt: 'Global chip shortage worsens due to increased AI demand and limited fab capacity',
-  },
-  {
-    id: 'energy',
-    title: 'Energy Crisis',
-    description: 'European energy supply disruption',
-    icon: Factory,
-    severity: 'medium' as const,
-    prompt: 'European natural gas prices spike 300%, forcing factory shutdowns',
-  },
-]
-
-// Mock simulation results
-const mockSimulationResult = {
-  summary: {
-    totalImpact: -12.4,
-    affectedStocks: 8,
-    criticalNodes: 3,
-    recoveryTime: '6-9 months',
-  },
-  affectedStocks: [
-    {
-      ticker: 'NVDA',
-      name: 'NVIDIA Corporation',
-      impact: -28.5,
-      exposure: 'Direct',
-      reason: 'Primary GPU supplier dependent on TSMC 4nm process',
-      pathLength: 1,
-    },
-    {
-      ticker: 'AMD',
-      name: 'Advanced Micro Devices',
-      impact: -24.2,
-      exposure: 'Direct',
-      reason: 'CPU/GPU manufacturing relies on TSMC advanced nodes',
-      pathLength: 1,
-    },
-    {
-      ticker: 'AAPL',
-      name: 'Apple Inc.',
-      impact: -18.7,
-      exposure: 'Direct',
-      reason: 'A-series and M-series chips manufactured at TSMC',
-      pathLength: 1,
-    },
-    {
-      ticker: 'QCOM',
-      name: 'Qualcomm',
-      impact: -15.3,
-      exposure: 'Direct',
-      reason: 'Snapdragon SoCs produced at TSMC',
-      pathLength: 1,
-    },
-    {
-      ticker: 'MSFT',
-      name: 'Microsoft Corporation',
-      impact: -8.2,
-      exposure: 'Indirect',
-      reason: 'Azure hardware procurement affected, Surface supply chain',
-      pathLength: 2,
-    },
-    {
-      ticker: 'GOOGL',
-      name: 'Alphabet Inc.',
-      impact: -6.4,
-      exposure: 'Indirect',
-      reason: 'TPU production and Pixel device supply chain',
-      pathLength: 2,
-    },
-    {
-      ticker: 'AMZN',
-      name: 'Amazon.com',
-      impact: -4.1,
-      exposure: 'Indirect',
-      reason: 'AWS Graviton chips and device manufacturing',
-      pathLength: 2,
-    },
-    {
-      ticker: 'TSLA',
-      name: 'Tesla Inc.',
-      impact: -3.8,
-      exposure: 'Indirect',
-      reason: 'FSD chip production and vehicle electronics',
-      pathLength: 2,
-    },
-  ],
-  propagationPaths: [
-    { from: 'TSM', to: 'NVDA', strength: 0.95 },
-    { from: 'TSM', to: 'AMD', strength: 0.92 },
-    { from: 'TSM', to: 'AAPL', strength: 0.88 },
-    { from: 'NVDA', to: 'MSFT', strength: 0.75 },
-    { from: 'NVDA', to: 'GOOGL', strength: 0.68 },
-    { from: 'AAPL', to: 'Consumer Electronics', strength: 0.82 },
-  ],
-  mitigations: [
-    'Consider hedging NVDA/AMD positions with put options',
-    'Diversify into Intel (domestic fab capacity)',
-    'Add Samsung Electronics as alternative exposure',
-    'Monitor GlobalFoundries for capacity shifts',
-  ],
+interface AffectedStock {
+  ticker: string
+  name: string
+  impact: number
+  exposure: 'Direct' | 'Indirect'
+  reason: string
+  pathLength: number
 }
 
-// Past simulations history
-const simulationHistory = [
-  {
-    id: 1,
-    title: 'Taiwan Strait Crisis',
-    date: '2024-12-10',
-    portfolioImpact: -12.4,
-    affectedCount: 8,
-  },
-  {
-    id: 2,
-    title: 'Oil Price Spike to $150',
-    date: '2024-12-08',
-    portfolioImpact: -5.2,
-    affectedCount: 12,
-  },
-  {
-    id: 3,
-    title: 'Fed Rate Hike to 7%',
-    date: '2024-12-05',
-    portfolioImpact: -8.7,
-    affectedCount: 15,
-  },
+interface SimulationResult {
+  summary: {
+    totalImpact: number
+    affectedStocks: number
+    criticalNodes: number
+    recoveryTime: string
+  }
+  affectedStocks: AffectedStock[]
+  propagationPaths: {
+    from: string
+    to: string
+    strength: number
+  }[]
+  mitigations: string[]
+}
+
+// Example scenario prompts to help users understand the format
+const examplePrompts = [
+  'TSM supply chain disruption due to Taiwan crisis',
+  'NVDA and AMD affected by semiconductor shortage',
+  'AAPL production delays from supplier issues',
 ]
+
+// Past simulations storage key
+const SIMULATION_HISTORY_KEY = 'gano_simulation_history'
+
+interface SimulationHistoryItem {
+  id: string
+  title: string
+  date: string
+  portfolioImpact: number
+  affectedCount: number
+}
 
 export default function SimulationPage() {
   const [scenarioInput, setScenarioInput] = useState('')
   const [isSimulating, setIsSimulating] = useState(false)
-  const [simulationResult, setSimulationResult] = useState<typeof mockSimulationResult | null>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
+  const [simulationHistory, setSimulationHistory] = useState<SimulationHistoryItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(SIMULATION_HISTORY_KEY)
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch {
+          return []
+        }
+      }
+    }
+    return []
+  })
 
   const runSimulation = async () => {
-    if (!scenarioInput.trim() && !selectedTemplate) return
+    if (!scenarioInput.trim()) return
 
     setIsSimulating(true)
     setSimulationResult(null)
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 2500))
+    try {
+      const response = await fetch('/api/simulation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenario: scenarioInput,
+        }),
+      })
 
-    setSimulationResult(mockSimulationResult)
-    setIsSimulating(false)
-  }
+      if (response.ok) {
+        const result: SimulationResult = await response.json()
+        setSimulationResult(result)
 
-  const selectTemplate = (template: typeof scenarioTemplates[0]) => {
-    setSelectedTemplate(template.id)
-    setScenarioInput(template.prompt)
-  }
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return 'bg-sell/10 text-sell border-sell/20'
-      case 'high':
-        return 'bg-warning/10 text-warning border-warning/20'
-      case 'medium':
-        return 'bg-indigo-50 text-indigo-600 border-indigo-200'
-      default:
-        return 'bg-slate-100 text-secondary border-slate-200'
+        // Save to history
+        const historyItem: SimulationHistoryItem = {
+          id: Date.now().toString(),
+          title: scenarioInput.slice(0, 50) + (scenarioInput.length > 50 ? '...' : ''),
+          date: new Date().toISOString().split('T')[0],
+          portfolioImpact: result.summary.totalImpact,
+          affectedCount: result.summary.affectedStocks,
+        }
+        const newHistory = [historyItem, ...simulationHistory].slice(0, 10)
+        setSimulationHistory(newHistory)
+        localStorage.setItem(SIMULATION_HISTORY_KEY, JSON.stringify(newHistory))
+      }
+    } catch (error) {
+      console.error('Simulation error:', error)
+    } finally {
+      setIsSimulating(false)
     }
+  }
+
+  const loadHistoryItem = (item: SimulationHistoryItem) => {
+    setScenarioInput(item.title)
+  }
+
+  const useExamplePrompt = (prompt: string) => {
+    setScenarioInput(prompt)
   }
 
   return (
@@ -240,21 +147,18 @@ export default function SimulationPage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-primary mb-2 block">
-                Describe a macro scenario or paste a news URL
+                Describe a scenario with ticker symbols (e.g., NVDA, TSM, AAPL)
               </label>
               <div className="flex gap-3">
                 <Input
                   value={scenarioInput}
-                  onChange={(e) => {
-                    setScenarioInput(e.target.value)
-                    setSelectedTemplate(null)
-                  }}
-                  placeholder="e.g., 'China invades Taiwan' or paste a Reuters article URL..."
+                  onChange={(e) => setScenarioInput(e.target.value)}
+                  placeholder="e.g., 'TSM supply chain disruption affecting NVDA and AMD'"
                   className="flex-1"
                 />
                 <Button
                   onClick={runSimulation}
-                  disabled={isSimulating || (!scenarioInput.trim() && !selectedTemplate)}
+                  disabled={isSimulating || !scenarioInput.trim()}
                 >
                   {isSimulating ? (
                     <>
@@ -271,25 +175,17 @@ export default function SimulationPage() {
               </div>
             </div>
 
-            {/* Quick Templates */}
+            {/* Example prompts */}
             <div>
-              <p className="text-sm text-secondary mb-3">Or choose a scenario template:</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                {scenarioTemplates.map((template) => (
+              <p className="text-sm text-secondary mb-2">Try an example:</p>
+              <div className="flex flex-wrap gap-2">
+                {examplePrompts.map((prompt, index) => (
                   <button
-                    key={template.id}
-                    onClick={() => selectTemplate(template)}
-                    className={`p-3 rounded-lg border-2 text-left transition-all ${
-                      selectedTemplate === template.id
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-slate-200 hover:border-indigo-300 bg-surface'
-                    }`}
+                    key={index}
+                    onClick={() => useExamplePrompt(prompt)}
+                    className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-secondary rounded-full transition-colors"
                   >
-                    <div className={`p-2 rounded-lg w-fit mb-2 ${getSeverityColor(template.severity)}`}>
-                      <template.icon className="w-4 h-4" />
-                    </div>
-                    <p className="font-medium text-sm text-primary">{template.title}</p>
-                    <p className="text-xs text-muted mt-0.5">{template.description}</p>
+                    {prompt}
                   </button>
                 ))}
               </div>
@@ -311,11 +207,11 @@ export default function SimulationPage() {
                 Mapping supply chain dependencies and calculating portfolio impact...
               </p>
               <div className="flex justify-center gap-6 mt-6 text-sm text-muted">
-                <span>Scanning 1,247 edges</span>
+                <span>Scanning supply chains</span>
                 <span>•</span>
-                <span>8 portfolio stocks</span>
+                <span>Analyzing impacts</span>
                 <span>•</span>
-                <span>3-hop analysis</span>
+                <span>Generating mitigations</span>
               </div>
             </CardContent>
           </Card>
@@ -325,23 +221,7 @@ export default function SimulationPage() {
         {simulationResult && !isSimulating && (
           <>
             {/* Impact Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-secondary">Portfolio Impact</p>
-                      <p className="text-2xl font-semibold text-sell mt-1">
-                        {simulationResult.summary.totalImpact}%
-                      </p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-sell/10">
-                      <TrendingDown className="w-5 h-5 text-sell" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
@@ -362,7 +242,7 @@ export default function SimulationPage() {
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-secondary">Critical Nodes</p>
+                      <p className="text-sm text-secondary">Directly Impacted</p>
                       <p className="text-2xl font-semibold text-sell mt-1">
                         {simulationResult.summary.criticalNodes}
                       </p>
@@ -396,7 +276,7 @@ export default function SimulationPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-indigo-500" />
-                  Impact Analysis
+                  Supply Chain Impact Analysis
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -405,9 +285,9 @@ export default function SimulationPage() {
                     <thead>
                       <tr className="border-b border-slate-200">
                         <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Stock</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Impact</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Exposure</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Path</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Est. Price Impact</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Exposure Type</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Supply Chain Distance</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Reason</th>
                       </tr>
                     </thead>
@@ -484,6 +364,7 @@ export default function SimulationPage() {
                   {simulationHistory.map((sim) => (
                     <div
                       key={sim.id}
+                      onClick={() => loadHistoryItem(sim)}
                       className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
@@ -496,10 +377,6 @@ export default function SimulationPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-sell">{sim.portfolioImpact}%</p>
-                          <p className="text-xs text-muted">impact</p>
-                        </div>
                         <div className="text-right">
                           <p className="text-sm font-semibold text-primary">{sim.affectedCount}</p>
                           <p className="text-xs text-muted">stocks</p>

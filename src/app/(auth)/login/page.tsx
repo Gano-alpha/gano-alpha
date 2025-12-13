@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,13 +21,15 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    // TODO: Implement actual auth
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      router.push('/dashboard')
+      const result = await login(email, password)
+      if (result.success) {
+        router.push('/home')
+      } else {
+        setError(result.error || 'Invalid email or password')
+      }
     } catch (err) {
-      setError('Invalid email or password')
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }

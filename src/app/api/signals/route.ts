@@ -11,6 +11,107 @@ interface Signal {
   supplyChainRisk: number
   lastUpdated: string
   change?: 'upgraded' | 'downgraded' | 'new'
+  price?: number | null
+  priceChange?: number | null
+  marketCap?: number | null
+  solvency?: number | null
+  centrality?: number | null
+  upstreamCount?: number | null
+  downstreamCount?: number | null
+}
+
+interface SupplyChainResponse {
+  ticker: string
+  name: string
+  suppliers: { ticker: string; name: string; relation: string; confidence: number }[]
+  customers: { ticker: string; name: string; relation: string; confidence: number }[]
+}
+
+// Fetch supply chain data for a ticker
+async function fetchSupplyChainData(ticker: string): Promise<SupplyChainResponse | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/supply-chain/${ticker}`, {
+      cache: 'no-store',
+    })
+    if (response.ok) {
+      return await response.json()
+    }
+  } catch {
+    // Silently fail for individual tickers
+  }
+  return null
+}
+
+interface MarketDataResponse {
+  [ticker: string]: {
+    price: number
+    change: number
+    changePercent: number
+    marketCap: number
+  } | null
+}
+
+// Fetch realtime price from backend's last_prices table (via /market/price endpoint)
+// Note: This endpoint needs to be deployed on the backend server
+async function fetchRealtimePrice(ticker: string): Promise<MarketDataResponse[string]> {
+  try {
+    // Try to fetch from backend's realtime price endpoint
+    const response = await fetch(`${BACKEND_URL}/market/price/${ticker}`, {
+      cache: 'no-store',
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+
+      // Also fetch OHLCV for previous close to calculate change
+      const ohlcvResponse = await fetch(`${BACKEND_URL}/market/ohlcv/${ticker}?limit=2`, {
+        cache: 'no-store',
+      })
+
+      let previousClose = data.price
+
+      if (ohlcvResponse.ok) {
+        const ohlcvData = await ohlcvResponse.json()
+        if (ohlcvData.length >= 2) {
+          previousClose = ohlcvData[1].close
+        } else if (ohlcvData.length === 1) {
+          previousClose = ohlcvData[0].open
+        }
+      }
+
+      const change = data.price - previousClose
+      const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0
+
+      return {
+        price: data.price,
+        change: Math.round(change * 100) / 100,
+        changePercent: Math.round(changePercent * 100) / 100,
+        marketCap: 0,
+      }
+    }
+  } catch {
+    // Backend market price endpoint not available
+  }
+  return null
+}
+
+// Fetch market data for multiple tickers
+async function fetchMarketData(tickers: string[]): Promise<MarketDataResponse> {
+  if (tickers.length === 0) {
+    return {}
+  }
+
+  // Fetch all tickers in parallel from backend
+  const results = await Promise.all(
+    tickers.map(ticker => fetchRealtimePrice(ticker))
+  )
+
+  const marketData: MarketDataResponse = {}
+  tickers.forEach((ticker, index) => {
+    marketData[ticker] = results[index]
+  })
+
+  return marketData
 }
 
 export async function GET(request: NextRequest) {
@@ -21,128 +122,78 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(`${BACKEND_URL}/api/signals?limit=${limit}`, {
       headers: { 'Content-Type': 'application/json' },
-      next: { revalidate: 60 }, // Cache for 1 minute
+      cache: 'no-store', // Don't cache to get fresh data
     })
 
     if (response.ok) {
-      const data = await response.json()
+      let data: Signal[] = await response.json()
+
       // Filter by signal type if needed
       if (filter !== 'all') {
-        return NextResponse.json(
-          data.filter((s: Signal) => s.signal.toLowerCase() === filter.toLowerCase())
-        )
+        data = data.filter((s: Signal) => s.signal.toLowerCase() === filter.toLowerCase())
       }
-      return NextResponse.json(data)
+
+      // Deduplicate by ticker
+      const seen = new Set<string>()
+      data = data.filter((s: Signal) => {
+        if (seen.has(s.ticker)) return false
+        seen.add(s.ticker)
+        return true
+      })
+
+      // Get list of tickers for market data fetch
+      const tickers = data.map(s => s.ticker)
+
+      // Fetch market data and supply chain data in parallel
+      const [marketData, ...supplyChainResults] = await Promise.all([
+        fetchMarketData(tickers),
+        ...data.map(signal => fetchSupplyChainData(signal.ticker))
+      ])
+
+      // Enrich signals with market data and supply chain data
+      const enrichedData = data.map((signal, index) => {
+        const supplyChainData = supplyChainResults[index]
+        const tickerMarketData = marketData[signal.ticker]
+
+        const upstreamCount = supplyChainData?.suppliers?.length ?? null
+        const downstreamCount = supplyChainData?.customers?.length ?? null
+
+        // Calculate centrality based on total connections (normalized to 0-1)
+        // This is a simplified metric - more connections = higher centrality
+        const totalConnections = (upstreamCount ?? 0) + (downstreamCount ?? 0)
+        // If we have supply chain data, calculate centrality; otherwise null
+        const centrality = supplyChainData !== null
+          ? Math.min(totalConnections / 20, 1) // Normalize: 20+ connections = 100% centrality
+          : null
+
+        // Solvency is estimated from supplyChainRisk (lower risk = higher solvency)
+        // supplyChainRisk is 0-1, convert to months (0 risk = 60+ months, 1 risk = 6 months)
+        const solvency = signal.supplyChainRisk !== undefined
+          ? Math.round(60 - (signal.supplyChainRisk * 54)) // Range: 6-60 months
+          : null
+
+        return {
+          ...signal,
+          // Market data from real-time pipeline
+          price: tickerMarketData?.price ?? null,
+          priceChange: tickerMarketData?.changePercent ?? null,
+          marketCap: tickerMarketData?.marketCap ?? null,
+          // Supply chain metrics
+          upstreamCount,
+          downstreamCount,
+          centrality,
+          solvency,
+        }
+      })
+
+      return NextResponse.json(enrichedData)
     }
 
-    return NextResponse.json(getMockSignals(limit, filter))
+    // No mock fallback - return empty array if backend is unavailable
+    return NextResponse.json([])
   } catch (error) {
     console.error('Error fetching signals:', error)
-    return NextResponse.json(getMockSignals(limit, filter))
+    // No mock fallback - return empty array on error
+    return NextResponse.json([])
   }
-}
-
-function getMockSignals(limit: number, filter: string): Signal[] {
-  const allSignals: Signal[] = [
-    {
-      ticker: 'NVDA',
-      name: 'NVIDIA Corporation',
-      signal: 'BUY',
-      confidence: 0.87,
-      whisperScore: 8.5,
-      supplyChainRisk: 0.32,
-      lastUpdated: '2024-12-12T10:30:00Z',
-      change: 'upgraded',
-    },
-    {
-      ticker: 'TSM',
-      name: 'Taiwan Semiconductor',
-      signal: 'BUY',
-      confidence: 0.82,
-      whisperScore: 7.8,
-      supplyChainRisk: 0.45,
-      lastUpdated: '2024-12-12T09:15:00Z',
-    },
-    {
-      ticker: 'AMD',
-      name: 'Advanced Micro Devices',
-      signal: 'HOLD',
-      confidence: 0.65,
-      whisperScore: 5.2,
-      supplyChainRisk: 0.58,
-      lastUpdated: '2024-12-12T08:45:00Z',
-      change: 'downgraded',
-    },
-    {
-      ticker: 'AAPL',
-      name: 'Apple Inc.',
-      signal: 'HOLD',
-      confidence: 0.71,
-      whisperScore: 6.1,
-      supplyChainRisk: 0.41,
-      lastUpdated: '2024-12-11T16:30:00Z',
-    },
-    {
-      ticker: 'MSFT',
-      name: 'Microsoft Corporation',
-      signal: 'BUY',
-      confidence: 0.79,
-      whisperScore: 7.2,
-      supplyChainRisk: 0.28,
-      lastUpdated: '2024-12-11T15:00:00Z',
-    },
-    {
-      ticker: 'GOOGL',
-      name: 'Alphabet Inc.',
-      signal: 'HOLD',
-      confidence: 0.68,
-      whisperScore: 5.8,
-      supplyChainRisk: 0.35,
-      lastUpdated: '2024-12-11T14:30:00Z',
-    },
-    {
-      ticker: 'INTC',
-      name: 'Intel Corporation',
-      signal: 'SELL',
-      confidence: 0.74,
-      whisperScore: 3.2,
-      supplyChainRisk: 0.72,
-      lastUpdated: '2024-12-11T11:00:00Z',
-    },
-    {
-      ticker: 'QCOM',
-      name: 'Qualcomm Inc.',
-      signal: 'BUY',
-      confidence: 0.76,
-      whisperScore: 6.9,
-      supplyChainRisk: 0.39,
-      lastUpdated: '2024-12-10T16:00:00Z',
-      change: 'new',
-    },
-    {
-      ticker: 'AVGO',
-      name: 'Broadcom Inc.',
-      signal: 'HOLD',
-      confidence: 0.62,
-      whisperScore: 5.5,
-      supplyChainRisk: 0.44,
-      lastUpdated: '2024-12-10T14:30:00Z',
-    },
-    {
-      ticker: 'MU',
-      name: 'Micron Technology',
-      signal: 'SELL',
-      confidence: 0.69,
-      whisperScore: 4.1,
-      supplyChainRisk: 0.61,
-      lastUpdated: '2024-12-10T10:00:00Z',
-    },
-  ]
-
-  let filtered = allSignals
-  if (filter !== 'all') {
-    filtered = allSignals.filter((s) => s.signal.toLowerCase() === filter.toLowerCase())
-  }
-
-  return filtered.slice(0, limit)
 }

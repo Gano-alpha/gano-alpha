@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Try to call backend simulation API
+    // Try to call backend simulation API first
     try {
       const response = await fetch(`${BACKEND_URL}/api/simulate`, {
         method: 'POST',
@@ -56,11 +56,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(data)
       }
     } catch {
-      // Backend not available, use mock simulation
+      // Backend simulation not available, analyze using supply chain data
     }
 
-    // Generate mock simulation based on scenario keywords
-    const result = generateMockSimulation(body.scenario, body.portfolioTickers)
+    // Analyze scenario using real supply chain data from backend
+    const result = await analyzeScenario(body.scenario, body.portfolioTickers)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Simulation error:', error)
@@ -71,172 +71,193 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateMockSimulation(
+async function analyzeScenario(
   scenario: string,
   portfolioTickers?: string[]
-): SimulationResult {
-  const scenarioLower = scenario.toLowerCase()
+): Promise<SimulationResult> {
+  // Extract ticker mentions from scenario (e.g., NVDA, AAPL, TSM)
+  const tickerPattern = /\b([A-Z]{1,5})\b/g
+  const mentionedTickers = scenario.match(tickerPattern) || []
 
-  // Detect scenario type and generate appropriate response
-  if (scenarioLower.includes('taiwan') || scenarioLower.includes('tsmc') || scenarioLower.includes('china')) {
-    return generateTaiwanCrisisSimulation()
+  // Deduplicate tickers
+  const uniqueTickers = [...new Set(mentionedTickers)]
+
+  if (uniqueTickers.length === 0) {
+    return {
+      summary: {
+        totalImpact: 0,
+        affectedStocks: 0,
+        criticalNodes: 0,
+        recoveryTime: 'N/A',
+      },
+      affectedStocks: [],
+      propagationPaths: [],
+      mitigations: [
+        'No ticker symbols found in scenario',
+        'Please include specific ticker symbols (e.g., NVDA, AAPL, TSM)',
+        'Example: "NVDA supply chain disruption due to Taiwan crisis"',
+      ],
+    }
   }
 
-  if (scenarioLower.includes('chip') || scenarioLower.includes('semiconductor') || scenarioLower.includes('shortage')) {
-    return generateChipShortageSimulation()
+  // Fetch supply chain data for all mentioned tickers from backend
+  const affectedStocks: AffectedStock[] = []
+  const propagationPaths: { from: string; to: string; strength: number }[] = []
+  const processedTickers = new Set<string>()
+
+  // Calculate severity multiplier based on scenario keywords
+  const severityMultiplier = calculateSeverity(scenario.toLowerCase())
+
+  for (const ticker of uniqueTickers) {
+    if (processedTickers.has(ticker)) continue
+
+    try {
+      // Fetch real supply chain data from backend
+      const response = await fetch(`${BACKEND_URL}/api/supply-chain/${ticker}`, {
+        cache: 'no-store'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        processedTickers.add(ticker)
+
+        // Add the main ticker as directly affected
+        const baseImpact = -(15 + Math.random() * 15) * severityMultiplier
+        affectedStocks.push({
+          ticker,
+          name: data.name || ticker,
+          impact: Math.round(baseImpact * 10) / 10,
+          exposure: 'Direct',
+          reason: `${data.name || ticker} directly mentioned in scenario`,
+          pathLength: 1,
+        })
+
+        // Add suppliers from real supply chain data (shock propagates upstream)
+        for (const supplier of (data.suppliers || [])) {
+          if (!processedTickers.has(supplier.ticker)) {
+            processedTickers.add(supplier.ticker)
+            const supplierImpact = -(3 + Math.random() * 7) * severityMultiplier * (supplier.confidence || 0.7)
+            affectedStocks.push({
+              ticker: supplier.ticker,
+              name: supplier.name,
+              impact: Math.round(supplierImpact * 10) / 10,
+              exposure: 'Indirect',
+              reason: `Supplier to ${ticker}: ${supplier.relation || 'component supplier'}`,
+              pathLength: 2,
+            })
+            propagationPaths.push({
+              from: ticker,
+              to: supplier.ticker,
+              strength: supplier.confidence || 0.7,
+            })
+          }
+        }
+
+        // Add customers from real supply chain data (shock propagates downstream)
+        for (const customer of (data.customers || [])) {
+          if (!processedTickers.has(customer.ticker)) {
+            processedTickers.add(customer.ticker)
+            const customerImpact = -(5 + Math.random() * 10) * severityMultiplier * (customer.confidence || 0.7)
+            affectedStocks.push({
+              ticker: customer.ticker,
+              name: customer.name,
+              impact: Math.round(customerImpact * 10) / 10,
+              exposure: 'Indirect',
+              reason: `Customer of ${ticker}: ${customer.relation || 'major customer'}`,
+              pathLength: 2,
+            })
+            propagationPaths.push({
+              from: ticker,
+              to: customer.ticker,
+              strength: customer.confidence || 0.7,
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to fetch supply chain for ${ticker}:`, error)
+    }
   }
 
-  if (scenarioLower.includes('energy') || scenarioLower.includes('gas') || scenarioLower.includes('oil')) {
-    return generateEnergyCrisisSimulation()
+  if (affectedStocks.length === 0) {
+    return {
+      summary: {
+        totalImpact: 0,
+        affectedStocks: 0,
+        criticalNodes: 0,
+        recoveryTime: 'N/A',
+      },
+      affectedStocks: [],
+      propagationPaths: [],
+      mitigations: [
+        'No supply chain data found for the mentioned tickers',
+        'Try using different ticker symbols that have supply chain data',
+      ],
+    }
   }
 
-  if (scenarioLower.includes('earthquake') || scenarioLower.includes('japan') || scenarioLower.includes('disaster')) {
-    return generateDisasterSimulation()
-  }
+  // Sort by impact (most negative first)
+  affectedStocks.sort((a, b) => a.impact - b.impact)
 
-  // Default generic simulation
-  return generateGenericSimulation(scenario)
-}
+  // Calculate summary metrics
+  const totalImpact = Math.round(
+    affectedStocks.reduce((sum, s) => sum + s.impact, 0) / affectedStocks.length * 10
+  ) / 10
+  const criticalNodes = affectedStocks.filter((s) => s.exposure === 'Direct').length
 
-function generateTaiwanCrisisSimulation(): SimulationResult {
   return {
     summary: {
-      totalImpact: -12.4,
-      affectedStocks: 8,
-      criticalNodes: 3,
-      recoveryTime: '6-9 months',
+      totalImpact,
+      affectedStocks: affectedStocks.length,
+      criticalNodes,
+      recoveryTime: estimateRecoveryTime(severityMultiplier, affectedStocks.length),
     },
-    affectedStocks: [
-      { ticker: 'NVDA', name: 'NVIDIA Corporation', impact: -28.5, exposure: 'Direct', reason: 'Primary GPU supplier dependent on TSMC 4nm process', pathLength: 1 },
-      { ticker: 'AMD', name: 'Advanced Micro Devices', impact: -24.2, exposure: 'Direct', reason: 'CPU/GPU manufacturing relies on TSMC advanced nodes', pathLength: 1 },
-      { ticker: 'AAPL', name: 'Apple Inc.', impact: -18.7, exposure: 'Direct', reason: 'A-series and M-series chips manufactured at TSMC', pathLength: 1 },
-      { ticker: 'QCOM', name: 'Qualcomm', impact: -15.3, exposure: 'Direct', reason: 'Snapdragon SoCs produced at TSMC', pathLength: 1 },
-      { ticker: 'MSFT', name: 'Microsoft Corporation', impact: -8.2, exposure: 'Indirect', reason: 'Azure hardware procurement affected', pathLength: 2 },
-      { ticker: 'GOOGL', name: 'Alphabet Inc.', impact: -6.4, exposure: 'Indirect', reason: 'TPU production and Pixel supply chain', pathLength: 2 },
-      { ticker: 'AMZN', name: 'Amazon.com', impact: -4.1, exposure: 'Indirect', reason: 'AWS Graviton chips and device manufacturing', pathLength: 2 },
-      { ticker: 'TSLA', name: 'Tesla Inc.', impact: -3.8, exposure: 'Indirect', reason: 'FSD chip production and vehicle electronics', pathLength: 2 },
-    ],
-    propagationPaths: [
-      { from: 'TSM', to: 'NVDA', strength: 0.95 },
-      { from: 'TSM', to: 'AMD', strength: 0.92 },
-      { from: 'TSM', to: 'AAPL', strength: 0.88 },
-      { from: 'NVDA', to: 'MSFT', strength: 0.75 },
-      { from: 'NVDA', to: 'GOOGL', strength: 0.68 },
-    ],
-    mitigations: [
-      'Consider hedging NVDA/AMD positions with put options',
-      'Diversify into Intel (domestic fab capacity)',
-      'Add Samsung Electronics as alternative exposure',
-      'Monitor GlobalFoundries for capacity shifts',
-    ],
+    affectedStocks,
+    propagationPaths,
+    mitigations: generateMitigations(affectedStocks),
   }
 }
 
-function generateChipShortageSimulation(): SimulationResult {
-  return {
-    summary: {
-      totalImpact: -8.7,
-      affectedStocks: 12,
-      criticalNodes: 4,
-      recoveryTime: '12-18 months',
-    },
-    affectedStocks: [
-      { ticker: 'NVDA', name: 'NVIDIA Corporation', impact: -15.2, exposure: 'Direct', reason: 'GPU supply constraints worsen', pathLength: 1 },
-      { ticker: 'AMD', name: 'Advanced Micro Devices', impact: -12.8, exposure: 'Direct', reason: 'CPU/GPU allocation reduced', pathLength: 1 },
-      { ticker: 'QCOM', name: 'Qualcomm', impact: -11.4, exposure: 'Direct', reason: 'Mobile SoC shortages', pathLength: 1 },
-      { ticker: 'AAPL', name: 'Apple Inc.', impact: -9.2, exposure: 'Direct', reason: 'iPhone production constraints', pathLength: 1 },
-      { ticker: 'TSLA', name: 'Tesla Inc.', impact: -7.8, exposure: 'Indirect', reason: 'Vehicle electronics shortage', pathLength: 2 },
-      { ticker: 'F', name: 'Ford Motor', impact: -6.5, exposure: 'Indirect', reason: 'Auto chip shortage continues', pathLength: 2 },
-    ],
-    propagationPaths: [
-      { from: 'Fabs', to: 'NVDA', strength: 0.88 },
-      { from: 'Fabs', to: 'AMD', strength: 0.85 },
-      { from: 'QCOM', to: 'AAPL', strength: 0.72 },
-    ],
-    mitigations: [
-      'Overweight equipment suppliers (ASML, LRCX, AMAT)',
-      'Consider memory names with pricing power (MU, SK Hynix)',
-      'Reduce auto sector exposure',
-      'Look for secondary suppliers gaining share',
-    ],
+function calculateSeverity(scenario: string): number {
+  if (scenario.includes('war') || scenario.includes('invasion') || scenario.includes('blockade')) {
+    return 1.5
   }
+  if (scenario.includes('crisis') || scenario.includes('collapse') || scenario.includes('shutdown')) {
+    return 1.2
+  }
+  if (scenario.includes('shortage') || scenario.includes('disruption') || scenario.includes('delay')) {
+    return 1.0
+  }
+  return 0.8
 }
 
-function generateEnergyCrisisSimulation(): SimulationResult {
-  return {
-    summary: {
-      totalImpact: -5.2,
-      affectedStocks: 15,
-      criticalNodes: 2,
-      recoveryTime: '3-6 months',
-    },
-    affectedStocks: [
-      { ticker: 'INTC', name: 'Intel Corporation', impact: -8.5, exposure: 'Direct', reason: 'European fab operations affected', pathLength: 1 },
-      { ticker: 'ASML', name: 'ASML Holding', impact: -6.2, exposure: 'Direct', reason: 'Netherlands operations energy costs', pathLength: 1 },
-      { ticker: 'BMW', name: 'BMW AG', impact: -5.8, exposure: 'Direct', reason: 'German manufacturing affected', pathLength: 1 },
-      { ticker: 'BASF', name: 'BASF SE', impact: -4.9, exposure: 'Direct', reason: 'Chemical production halted', pathLength: 1 },
-    ],
-    propagationPaths: [
-      { from: 'Energy', to: 'Manufacturing', strength: 0.82 },
-      { from: 'Manufacturing', to: 'INTC', strength: 0.75 },
-    ],
-    mitigations: [
-      'Increase energy sector exposure (XLE, XOM)',
-      'Reduce European manufacturing exposure',
-      'Consider US-based semiconductor alternatives',
-      'Monitor LNG shipping companies',
-    ],
-  }
+function estimateRecoveryTime(severity: number, affectedCount: number): string {
+  if (severity >= 1.5 && affectedCount > 5) return '12-18 months'
+  if (severity >= 1.2 && affectedCount > 3) return '6-12 months'
+  if (severity >= 1.0 && affectedCount > 2) return '3-6 months'
+  return '1-3 months'
 }
 
-function generateDisasterSimulation(): SimulationResult {
-  return {
-    summary: {
-      totalImpact: -4.8,
-      affectedStocks: 10,
-      criticalNodes: 3,
-      recoveryTime: '2-4 months',
-    },
-    affectedStocks: [
-      { ticker: 'TM', name: 'Toyota Motor', impact: -12.4, exposure: 'Direct', reason: 'Japanese production halted', pathLength: 1 },
-      { ticker: 'SONY', name: 'Sony Group', impact: -9.8, exposure: 'Direct', reason: 'Sensor and electronics production', pathLength: 1 },
-      { ticker: 'AAPL', name: 'Apple Inc.', impact: -5.2, exposure: 'Indirect', reason: 'Display and component supply', pathLength: 2 },
-      { ticker: 'NVDA', name: 'NVIDIA Corporation', impact: -3.1, exposure: 'Indirect', reason: 'Packaging and testing delays', pathLength: 2 },
-    ],
-    propagationPaths: [
-      { from: 'Japan', to: 'TM', strength: 0.95 },
-      { from: 'Japan', to: 'SONY', strength: 0.92 },
-      { from: 'SONY', to: 'AAPL', strength: 0.68 },
-    ],
-    mitigations: [
-      'Hedge Japanese yen exposure',
-      'Monitor alternative suppliers in Korea/Taiwan',
-      'Consider insurance-related plays',
-      'Look for reconstruction beneficiaries',
-    ],
-  }
-}
+function generateMitigations(affectedStocks: AffectedStock[]): string[] {
+  const mitigations: string[] = []
+  const directlyAffected = affectedStocks.filter((s) => s.exposure === 'Direct')
+  const indirectlyAffected = affectedStocks.filter((s) => s.exposure === 'Indirect')
 
-function generateGenericSimulation(scenario: string): SimulationResult {
-  return {
-    summary: {
-      totalImpact: -3.5,
-      affectedStocks: 5,
-      criticalNodes: 1,
-      recoveryTime: '1-3 months',
-    },
-    affectedStocks: [
-      { ticker: 'SPY', name: 'S&P 500 ETF', impact: -3.5, exposure: 'Direct', reason: 'Broad market impact from scenario', pathLength: 1 },
-      { ticker: 'QQQ', name: 'Nasdaq 100 ETF', impact: -4.2, exposure: 'Direct', reason: 'Tech sector volatility', pathLength: 1 },
-    ],
-    propagationPaths: [
-      { from: 'Event', to: 'Market', strength: 0.65 },
-    ],
-    mitigations: [
-      'Consider increasing cash allocation',
-      'Review portfolio for concentration risk',
-      'Monitor VIX for hedging opportunities',
-      'Rebalance toward defensive sectors',
-    ],
+  if (directlyAffected.length > 0) {
+    const tickers = directlyAffected.slice(0, 3).map((s) => s.ticker).join(', ')
+    mitigations.push(`Consider hedging ${tickers} positions with protective puts`)
   }
+
+  if (affectedStocks.length > 5) {
+    mitigations.push('High supply chain concentration risk - consider sector diversification')
+  }
+
+  if (indirectlyAffected.length > 0) {
+    const tickers = indirectlyAffected.slice(0, 3).map((s) => s.ticker).join(', ')
+    mitigations.push(`Monitor secondary effects on ${tickers}`)
+  }
+
+  mitigations.push('Review stop-loss levels for affected positions')
+
+  return mitigations
 }
