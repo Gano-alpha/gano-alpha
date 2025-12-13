@@ -25,7 +25,8 @@ export default function LoginPage() {
       await new Promise(resolve => setTimeout(resolve, 1000))
       router.push('/dashboard')
     } catch (err) {
-      setError('Invalid email or password')
+      console.error('Login error:', err)
+      setError('Invalid credentials')
     } finally {
       setLoading(false)
     }

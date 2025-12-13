@@ -5,18 +5,25 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mail, Lock, User, ArrowRight, Check } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!termsAccepted) {
+      setError('Please accept the terms and conditions to continue.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -26,6 +33,7 @@ export default function SignupPage() {
       await new Promise(resolve => setTimeout(resolve, 1000))
       router.push('/dashboard')
     } catch (err) {
+      console.error('Signup error:', err)
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
@@ -144,27 +152,37 @@ export default function SignupPage() {
           </div>
         </div>
 
+        {/* Terms checkbox */}
+        <div className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            id="terms"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <label htmlFor="terms" className="text-sm text-secondary">
+            I agree to the{' '}
+            <Link href="/terms" className="text-indigo-600 hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-indigo-600 hover:underline">
+              Privacy Policy
+            </Link>
+          </label>
+        </div>
+
         <Button
           type="submit"
           className="w-full"
           size="lg"
           loading={loading}
+          disabled={!termsAccepted}
         >
           Create account
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-
-        {/* Terms */}
-        <p className="text-xs text-center text-muted">
-          By creating an account, you agree to our{' '}
-          <Link href="/terms" className="text-indigo-600 hover:underline">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href="/privacy" className="text-indigo-600 hover:underline">
-            Privacy Policy
-          </Link>
-        </p>
       </form>
 
       {/* Divider */}
