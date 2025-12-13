@@ -94,7 +94,7 @@ export default function HomePage() {
             </h1>
             <p className="mt-6 text-xl text-secondary max-w-2xl">
               AI-powered supply chain intelligence that reveals hidden risks and opportunities
-              before they hit the market. Know when Apple's supplier stumbles—before Apple does.
+              before they hit the market. Know when Apple&apos;s supplier stumbles—before Apple does.
             </p>
             <div className="mt-8 flex items-center gap-4">
               <Link href="/signup">
@@ -138,7 +138,7 @@ export default function HomePage() {
               Your unfair advantage in the market
             </h2>
             <p className="mt-4 text-lg text-secondary max-w-2xl mx-auto">
-              Most investors react to news. You'll see it coming.
+              Most investors react to news. You&apos;ll see it coming.
             </p>
           </div>
 
@@ -203,7 +203,7 @@ export default function HomePage() {
                 key={idx}
                 className="p-8 rounded-2xl bg-surface border border-slate-200"
               >
-                <p className="text-lg text-primary italic">"{testimonial.quote}"</p>
+                <p className="text-lg text-primary italic">&quot;{testimonial.quote}&quot;</p>
                 <div className="mt-6 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-teal-400" />
                   <div>
@@ -285,7 +285,7 @@ export default function HomePage() {
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-primary">
-            Ready to see what you've been missing?
+            Ready to see what you&apos;ve been missing?
           </h2>
           <p className="mt-4 text-lg text-secondary">
             Join thousands of investors using supply chain intelligence to make smarter decisions.

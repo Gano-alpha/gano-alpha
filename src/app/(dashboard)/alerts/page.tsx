@@ -338,7 +338,7 @@ export default function AlertsPage() {
                         {alert.extractedText && (
                           <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                             <p className="text-xs text-muted mb-1">Extracted from filing:</p>
-                            <p className="text-sm text-secondary italic">"{alert.extractedText}"</p>
+                            <p className="text-sm text-secondary italic">&quot;{alert.extractedText}&quot;</p>
                           </div>
                         )}
                       </div>
