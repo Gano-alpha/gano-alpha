@@ -20,6 +20,9 @@ const config: Config = {
         secondary: '#64748B',
         muted: '#94A3B8',
 
+        // Borders
+        border: '#E2E8F0',
+
         // Signals - The Money Colors
         buy: '#10B981',
         warning: '#F59E0B',
