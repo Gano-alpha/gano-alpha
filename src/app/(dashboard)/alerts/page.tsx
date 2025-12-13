@@ -366,7 +366,7 @@ export default function AlertsPage() {
                 <h3 className="text-lg font-semibold text-primary">No alerts found</h3>
                 <p className="text-secondary mt-1">
                   {selectedFilter === 'Unread'
-                    ? 'You're all caught up!'
+                    ? "You're all caught up!"
                     : 'No alerts match your current filter.'}
                 </p>
               </CardContent>
