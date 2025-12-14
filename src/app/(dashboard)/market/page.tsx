@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +22,9 @@ import {
   Loader2,
   Calendar,
 } from 'lucide-react'
+
+// Default tier when backend doesn't provide one
+const DEFAULT_TIER = 'SCOUT' as const
 
 interface Signal {
   ticker: string
@@ -192,6 +195,10 @@ export default function MarketPage() {
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [graphLoading, setGraphLoading] = useState(false)
 
+  // Refs for tracking fetch state
+  const initialTickerSetRef = useRef(false)
+  const fetchedMiniGraphTickersRef = useRef<Set<string>>(new Set())
+
   // Close search dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -229,7 +236,7 @@ export default function MarketPage() {
             centrality: s.centrality ?? null,
             upstreamCount: s.upstreamCount ?? null,
             downstreamCount: s.downstreamCount ?? null,
-            tier: s.tier ?? 'SCOUT', // default if backend missing tier
+            tier: s.tier ?? DEFAULT_TIER,
             mertonPd: (s as any).mertonPd ?? null,
             altmanZ: (s as any).altmanZ ?? null,
             sharpe: (s as any).sharpe ?? null,
@@ -237,16 +244,18 @@ export default function MarketPage() {
           }))
           const finalSignals = enhanced.length > 0 ? enhanced : mockSignals
           setSignals(finalSignals)
-          // Set first ticker as default for graph
-          if (finalSignals.length > 0 && !selectedTicker) {
+          // Set first ticker as default for graph (only on initial load)
+          if (finalSignals.length > 0 && !initialTickerSetRef.current) {
             setSelectedTicker(finalSignals[0].ticker)
+            initialTickerSetRef.current = true
           }
         }
       } catch (error) {
         console.error('Error fetching signals:', error)
         setSignals(mockSignals)
-        if (!selectedTicker && mockSignals.length > 0) {
+        if (!initialTickerSetRef.current && mockSignals.length > 0) {
           setSelectedTicker(mockSignals[0].ticker)
+          initialTickerSetRef.current = true
         }
       } finally {
         setLoading(false)
@@ -348,8 +357,8 @@ export default function MarketPage() {
   useEffect(() => {
     const toFetch = signals
       .slice(0, 10)
-      .filter((s) => !miniGraphCache[s.ticker])
       .map((s) => s.ticker)
+      .filter((ticker) => !fetchedMiniGraphTickersRef.current.has(ticker))
 
     if (toFetch.length === 0) return
 
@@ -373,15 +382,18 @@ export default function MarketPage() {
         })
       )
 
-      const next: Record<string, { suppliers: any[]; customers: any[] }> = { ...miniGraphCache }
-      results.forEach((entry) => {
-        next[entry.ticker] = { suppliers: entry.suppliers, customers: entry.customers }
+      setMiniGraphCache((prev) => {
+        const next = { ...prev }
+        results.forEach((entry) => {
+          next[entry.ticker] = { suppliers: entry.suppliers, customers: entry.customers }
+          fetchedMiniGraphTickersRef.current.add(entry.ticker)
+        })
+        return next
       })
-      setMiniGraphCache(next)
     }
 
     loadMini()
-  }, [signals, miniGraphCache])
+  }, [signals])
 
   const filteredResults = signals.filter((stock) => {
     // Search filter

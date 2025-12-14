@@ -5,7 +5,21 @@ import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Bell, AlertTriangle, Zap, TrendingDown, TrendingUp, Clock, ArrowRight, ExternalLink, BellOff, Loader2, FileText, Check, Trash2 } from 'lucide-react'
+import {
+  Bell,
+  AlertTriangle,
+  Zap,
+  TrendingDown,
+  TrendingUp,
+  Clock,
+  ArrowRight,
+  ExternalLink,
+  BellOff,
+  Loader2,
+  FileText,
+  Check,
+  Trash2,
+} from 'lucide-react'
 
 interface Alert {
   id: string
