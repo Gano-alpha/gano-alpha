@@ -254,7 +254,7 @@ export function useAuthenticatedFetch() {
   return useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
     const token = await getAccessToken()
     if (!token) {
-      logout()
+      await logout()
       throw new Error('Not authenticated')
     }
 
@@ -267,7 +267,7 @@ export function useAuthenticatedFetch() {
     })
 
     if (res.status === 401) {
-      logout()
+      await logout()
       throw new Error('Session expired')
     }
 
