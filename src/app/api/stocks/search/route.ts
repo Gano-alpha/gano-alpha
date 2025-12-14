@@ -59,13 +59,13 @@ export async function GET(request: NextRequest) {
 
     if (response.ok) {
       const data = await response.json()
-      return NextResponse.json(data)
+      return NextResponse.json({ data, isDemo: false })
     }
   } catch (error) {
     console.error('Error fetching stocks:', error)
   }
 
-  // Fallback to local data
+  // Fallback to local data with demo indicator
   let results = stocks
 
   if (query) {
@@ -83,5 +83,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  return NextResponse.json(results.slice(0, limit))
+  return NextResponse.json({
+    data: results.slice(0, limit),
+    isDemo: true,
+  })
 }

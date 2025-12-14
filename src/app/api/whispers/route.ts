@@ -45,13 +45,20 @@ export async function GET(request: NextRequest) {
 
     if (response.ok) {
       const data = await response.json()
-      return NextResponse.json(data)
+      return NextResponse.json({ data, isDemo: false })
     }
 
-    return NextResponse.json(getMockWhispers(limit, ticker, severity))
+    // Return demo data with indicator when backend unavailable
+    return NextResponse.json({
+      data: getMockWhispers(limit, ticker, severity),
+      isDemo: true,
+    })
   } catch (error) {
     console.error('Error fetching whispers:', error)
-    return NextResponse.json(getMockWhispers(limit, ticker, severity))
+    return NextResponse.json({
+      data: getMockWhispers(limit, ticker, severity),
+      isDemo: true,
+    })
   }
 }
 

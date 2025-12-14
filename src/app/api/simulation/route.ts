@@ -5,6 +5,8 @@ const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.150.133.161:8000'
 interface SimulationRequest {
   scenario: string
   portfolioTickers?: string[]
+  shockTicker?: string
+  shockMagnitude?: number
 }
 
 interface AffectedStock {
@@ -32,8 +34,22 @@ interface SimulationResult {
   mitigations: string[]
 }
 
+interface ShockPropagationResponse {
+  shock_ticker: string
+  shock_magnitude_pct: number
+  max_hops: number
+  impacted_tickers: {
+    ticker: string
+    hop: number
+    direction: string
+    propagation_path: string[]
+    cumulative_edge_weight: number
+    transmission_factor: number
+    estimated_impact_pct: number
+  }[]
+}
+
 export async function POST(request: NextRequest) {
-  // Forward Authorization header from client
   const authHeader = request.headers.get('Authorization')
 
   try {
@@ -46,30 +62,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build headers with auth forwarding
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (authHeader) {
       headers['Authorization'] = authHeader
     }
 
-    // Try to call backend simulation API first
+    // Extract ticker from scenario or use provided shockTicker
+    const tickerPattern = /\b([A-Z]{1,5})\b/g
+    const mentionedTickers = body.scenario.match(tickerPattern) || []
+    const shockTicker = body.shockTicker || mentionedTickers[0]
+
+    if (!shockTicker) {
+      return NextResponse.json({
+        summary: {
+          totalImpact: 0,
+          affectedStocks: 0,
+          criticalNodes: 0,
+          recoveryTime: 'N/A',
+        },
+        affectedStocks: [],
+        propagationPaths: [],
+        mitigations: [
+          'No ticker symbols found in scenario',
+          'Please include specific ticker symbols (e.g., NVDA, AAPL, TSM)',
+        ],
+      })
+    }
+
+    // Calculate shock magnitude based on scenario keywords
+    const severityMultiplier = calculateSeverity(body.scenario.toLowerCase())
+    const shockMagnitude = body.shockMagnitude || -(15 * severityMultiplier)
+
+    // Call backend shock-propagation endpoint
     try {
-      const response = await fetch(`${BACKEND_URL}/api/simulate`, {
+      const response = await fetch(`${BACKEND_URL}/graph/shock-propagation`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          shock_ticker: shockTicker,
+          shock_magnitude_pct: shockMagnitude,
+          max_hops: 2,
+          transmission_decay: 0.8,
+        }),
       })
 
       if (response.ok) {
-        const data = await response.json()
-        return NextResponse.json(data)
+        const data: ShockPropagationResponse = await response.json()
+        return NextResponse.json(transformShockResponse(data, body.scenario))
+      }
+
+      // If 404 (ticker not in graph), fall back to supply chain analysis
+      if (response.status === 404) {
+        const result = await analyzeScenarioFallback(body.scenario, body.portfolioTickers, authHeader)
+        return NextResponse.json(result)
       }
     } catch {
-      // Backend simulation not available, analyze using supply chain data
+      // Backend not available, fall back
     }
 
-    // Analyze scenario using real supply chain data from backend
-    const result = await analyzeScenario(body.scenario, body.portfolioTickers, authHeader)
+    // Fallback to supply chain analysis
+    const result = await analyzeScenarioFallback(body.scenario, body.portfolioTickers, authHeader)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Simulation error:', error)
@@ -80,7 +132,42 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function analyzeScenario(
+function transformShockResponse(data: ShockPropagationResponse, scenario: string): SimulationResult {
+  const affectedStocks: AffectedStock[] = data.impacted_tickers.map((impact) => ({
+    ticker: impact.ticker,
+    name: impact.ticker, // Name would need separate lookup
+    impact: Math.round(impact.estimated_impact_pct * 10) / 10,
+    exposure: impact.hop === 1 ? 'Direct' : 'Indirect',
+    reason: `${impact.direction} path: ${impact.propagation_path.join(' → ')}`,
+    pathLength: impact.hop,
+  }))
+
+  const propagationPaths = data.impacted_tickers
+    .filter((impact) => impact.propagation_path.length >= 2)
+    .map((impact) => ({
+      from: impact.propagation_path[impact.propagation_path.length - 2] || data.shock_ticker,
+      to: impact.ticker,
+      strength: impact.cumulative_edge_weight,
+    }))
+
+  const totalImpact = affectedStocks.length > 0
+    ? Math.round(affectedStocks.reduce((sum, s) => sum + s.impact, 0) / affectedStocks.length * 10) / 10
+    : 0
+
+  return {
+    summary: {
+      totalImpact,
+      affectedStocks: affectedStocks.length,
+      criticalNodes: affectedStocks.filter((s) => s.exposure === 'Direct').length,
+      recoveryTime: estimateRecoveryTime(Math.abs(data.shock_magnitude_pct) / 10, affectedStocks.length),
+    },
+    affectedStocks,
+    propagationPaths,
+    mitigations: generateMitigations(affectedStocks),
+  }
+}
+
+async function analyzeScenarioFallback(
   scenario: string,
   portfolioTickers?: string[],
   authHeader?: string | null
