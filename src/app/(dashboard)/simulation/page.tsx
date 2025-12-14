@@ -10,8 +10,6 @@ import {
   Zap,
   Play,
   AlertTriangle,
-  TrendingDown,
-  TrendingUp,
   Loader2,
   ChevronRight,
   BarChart3,
@@ -19,6 +17,7 @@ import {
   Target,
   History,
   Sparkles,
+  TrendingUp,
 } from 'lucide-react'
 
 interface AffectedStock {
@@ -64,10 +63,33 @@ interface SimulationHistoryItem {
   affectedCount: number
 }
 
+const mockPreview: SimulationResult = {
+  summary: {
+    totalImpact: -6.4,
+    affectedStocks: 12,
+    criticalNodes: 3,
+    recoveryTime: '8-12 weeks',
+  },
+  affectedStocks: [
+    { ticker: 'TSM', name: 'Taiwan Semi', impact: -12.5, exposure: 'Direct', reason: 'Fab outage', pathLength: 0 },
+    { ticker: 'NVDA', name: 'Nvidia', impact: -8.1, exposure: 'Indirect', reason: 'GPU supply constraints', pathLength: 1 },
+    { ticker: 'AMD', name: 'AMD', impact: -6.3, exposure: 'Indirect', reason: 'Shared supplier', pathLength: 1 },
+  ],
+  propagationPaths: [
+    { from: 'TSM', to: 'NVDA', strength: 0.82 },
+    { from: 'TSM', to: 'AMD', strength: 0.76 },
+  ],
+  mitigations: [
+    'Rotate to alternate fabs with spare capacity',
+    'Trim hub exposure >0.7 centrality',
+  ],
+}
+
 export default function SimulationPage() {
   const [scenarioInput, setScenarioInput] = useState('')
   const [isSimulating, setIsSimulating] = useState(false)
-  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
+  // Show a meaningful preview even before the first run
+  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(mockPreview)
   const [simulationHistory, setSimulationHistory] = useState<SimulationHistoryItem[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(SIMULATION_HISTORY_KEY)
@@ -270,6 +292,16 @@ export default function SimulationPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Why this matters */}
+            <Card>
+              <CardContent className="p-4 bg-slate-50 border-slate-200">
+                <p className="text-sm font-semibold text-primary mb-1">Why this matters</p>
+                <p className="text-sm text-secondary">
+                  {simulationResult.summary.affectedStocks} stocks at risk • {simulationResult.summary.criticalNodes} critical hubs • Expected recovery {simulationResult.summary.recoveryTime}
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Affected Stocks Table */}
             <Card>

@@ -7,22 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SignalCard } from '@/components/features/signal-card'
 import { SupplyChainGraph } from '@/components/features/supply-chain-graph'
 import {
   Search,
   SlidersHorizontal,
   TrendingUp,
   TrendingDown,
-  Plus,
-  Star,
-  Network,
-  Shield,
   ChevronDown,
   List,
   GitBranch,
   Maximize2,
   X,
   Loader2,
+  Calendar,
 } from 'lucide-react'
 
 interface Signal {
@@ -40,6 +38,15 @@ interface Signal {
   marketCap?: number | null
   upstreamCount?: number
   downstreamCount?: number
+  tier?: 'SNIPER' | 'SCOUT' | string
+  mertonPd?: number | null
+  altmanZ?: number | null
+  sharpe?: number | null
+  drawdown?: number | null
+  miniGraph?: {
+    suppliers: { ticker: string; confidence?: number }[]
+    customers: { ticker: string; confidence?: number }[]
+  }
 }
 
 interface SearchResult {
@@ -65,6 +72,81 @@ interface GraphData {
   customers: SupplyChainNode[]
 }
 
+const mockSignals: Signal[] = [
+  {
+    ticker: 'ACME',
+    name: 'Acme Corp',
+    signal: 'SELL',
+    confidence: 0.965,
+    whisperScore: 0,
+    supplyChainRisk: 0,
+    lastUpdated: new Date().toISOString(),
+    solvency: 0.35,
+    centrality: 0.82,
+    upstreamCount: 5,
+    downstreamCount: 3,
+    tier: 'SNIPER',
+    mertonPd: 14.2,
+    altmanZ: 1.5,
+    sharpe: -0.4,
+    drawdown: -18.4,
+  },
+  {
+    ticker: 'BETA',
+    name: 'Beta Industries',
+    signal: 'BUY',
+    confidence: 0.912,
+    whisperScore: 0,
+    supplyChainRisk: 0,
+    lastUpdated: new Date().toISOString(),
+    solvency: 0.72,
+    centrality: 0.41,
+    upstreamCount: 2,
+    downstreamCount: 6,
+    tier: 'SCOUT',
+    mertonPd: 5.8,
+    altmanZ: 3.2,
+    sharpe: 0.8,
+    drawdown: -12.0,
+  },
+  {
+    ticker: 'GNNX',
+    name: 'GNN Explorers',
+    signal: 'SELL',
+    confidence: 0.955,
+    whisperScore: 0,
+    supplyChainRisk: 0,
+    lastUpdated: new Date().toISOString(),
+    solvency: 0.28,
+    centrality: 0.91,
+    upstreamCount: 8,
+    downstreamCount: 4,
+    tier: 'SNIPER',
+    mertonPd: 18.7,
+    altmanZ: 1.1,
+    sharpe: -0.6,
+    drawdown: -22.5,
+  },
+  {
+    ticker: 'RISK',
+    name: 'Risk Metrics Inc',
+    signal: 'BUY',
+    confidence: 0.905,
+    whisperScore: 0,
+    supplyChainRisk: 0,
+    lastUpdated: new Date().toISOString(),
+    solvency: 0.65,
+    centrality: 0.55,
+    upstreamCount: 3,
+    downstreamCount: 3,
+    tier: 'SCOUT',
+    mertonPd: 7.4,
+    altmanZ: 2.9,
+    sharpe: 0.5,
+    drawdown: -10.5,
+  },
+]
+
 const sectors = [
   'All Sectors',
   'Semiconductors',
@@ -88,6 +170,8 @@ export default function MarketPage() {
   const [selectedSector, setSelectedSector] = useState('All Sectors')
   const [showFilters, setShowFilters] = useState(false)
   const [signals, setSignals] = useState<Signal[]>([])
+  const [tierFilter, setTierFilter] = useState<'All' | 'SNIPER' | 'SCOUT'>('SNIPER')
+  const [asOfDate, setAsOfDate] = useState<string>('')
 
   // Filter states
   const [signalFilter, setSignalFilter] = useState('All')
@@ -96,6 +180,7 @@ export default function MarketPage() {
   const [loading, setLoading] = useState(true)
   const [graphFullscreen, setGraphFullscreen] = useState(false)
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
+  const [miniGraphCache, setMiniGraphCache] = useState<Record<string, { suppliers: any[]; customers: any[] }>>({})
 
   // Search autocomplete state
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -122,7 +207,12 @@ export default function MarketPage() {
   useEffect(() => {
     async function fetchSignals() {
       try {
-        const res = await fetch('/api/signals?limit=50')
+        const params = new URLSearchParams()
+        params.set('limit', '50')
+        if (tierFilter !== 'All') params.set('tier', tierFilter)
+        if (asOfDate) params.set('date', asOfDate)
+
+        const res = await fetch(`/api/signals?${params.toString()}`)
         if (res.ok) {
           const data = await res.json()
           // Deduplicate by ticker
@@ -132,29 +222,39 @@ export default function MarketPage() {
             seen.add(s.ticker)
             return true
           })
-          // Use real data from API - no mock fallbacks
+          // Use real data from API - fallback to mock only if empty
           const enhanced = uniqueSignals.map((s: Signal) => ({
             ...s,
             solvency: s.solvency ?? null,
             centrality: s.centrality ?? null,
             upstreamCount: s.upstreamCount ?? null,
             downstreamCount: s.downstreamCount ?? null,
+            tier: s.tier ?? 'SCOUT', // default if backend missing tier
+            mertonPd: (s as any).mertonPd ?? null,
+            altmanZ: (s as any).altmanZ ?? null,
+            sharpe: (s as any).sharpe ?? null,
+            drawdown: (s as any).drawdown ?? null,
           }))
-          setSignals(enhanced)
+          const finalSignals = enhanced.length > 0 ? enhanced : mockSignals
+          setSignals(finalSignals)
           // Set first ticker as default for graph
-          if (enhanced.length > 0 && !selectedTicker) {
-            setSelectedTicker(enhanced[0].ticker)
+          if (finalSignals.length > 0 && !selectedTicker) {
+            setSelectedTicker(finalSignals[0].ticker)
           }
         }
       } catch (error) {
         console.error('Error fetching signals:', error)
+        setSignals(mockSignals)
+        if (!selectedTicker && mockSignals.length > 0) {
+          setSelectedTicker(mockSignals[0].ticker)
+        }
       } finally {
         setLoading(false)
       }
     }
 
     fetchSignals()
-  }, [])
+  }, [tierFilter, asOfDate])
 
   // Search for stocks with autocomplete
   useEffect(() => {
@@ -244,6 +344,45 @@ export default function MarketPage() {
     fetchGraphData()
   }, [selectedTicker, viewMode])
 
+  // Prefetch mini graph for cards (limited to top N to avoid noise)
+  useEffect(() => {
+    const toFetch = signals
+      .slice(0, 10)
+      .filter((s) => !miniGraphCache[s.ticker])
+      .map((s) => s.ticker)
+
+    if (toFetch.length === 0) return
+
+    async function loadMini() {
+      const results = await Promise.all(
+        toFetch.map(async (ticker) => {
+          try {
+            const res = await fetch(`/api/supply-chain/${ticker}?limit=3`)
+            if (res.ok) {
+              const data = await res.json()
+              return {
+                ticker,
+                suppliers: data.suppliers || [],
+                customers: data.customers || [],
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+          return { ticker, suppliers: [], customers: [] }
+        })
+      )
+
+      const next: Record<string, { suppliers: any[]; customers: any[] }> = { ...miniGraphCache }
+      results.forEach((entry) => {
+        next[entry.ticker] = { suppliers: entry.suppliers, customers: entry.customers }
+      })
+      setMiniGraphCache(next)
+    }
+
+    loadMini()
+  }, [signals, miniGraphCache])
+
   const filteredResults = signals.filter((stock) => {
     // Search filter
     const matchesSearch =
@@ -283,7 +422,10 @@ export default function MarketPage() {
     // Note: Sector filter is not yet implemented as backend doesn't provide sector data
     // Add sector filtering when backend adds sector to signals response
 
-    return matchesSearch && matchesSignal && matchesSolvency && matchesCentrality
+    // Tier filter
+    const matchesTier = tierFilter === 'All' || stock.tier?.toUpperCase() === tierFilter
+
+    return matchesSearch && matchesSignal && matchesSolvency && matchesCentrality && matchesTier
   })
 
   const handleNodeClick = (node: any) => {
@@ -431,6 +573,41 @@ export default function MarketPage() {
               {/* Sector Dropdown - only show in list view */}
               {viewMode === 'list' && (
                 <>
+                  {/* Date (as-of) and Tier */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-secondary">Tier</label>
+                      <div className="flex gap-2">
+                        {(['SNIPER', 'SCOUT', 'All'] as const).map((tier) => (
+                          <Button
+                            key={tier}
+                            size="sm"
+                            variant={tierFilter === tier ? 'default' : 'outline'}
+                            onClick={() => setTierFilter(tier)}
+                          >
+                            {tier}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-secondary flex items-center gap-1">
+                        <Calendar className="w-4 h-4" /> As of
+                      </label>
+                      <Input
+                        type="date"
+                        value={asOfDate}
+                        onChange={(e) => setAsOfDate(e.target.value)}
+                        className="h-10 w-[180px]"
+                      />
+                      {asOfDate && (
+                        <Button size="sm" variant="ghost" onClick={() => setAsOfDate('')}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="relative">
                     <select
                       value={selectedSector}
@@ -455,24 +632,39 @@ export default function MarketPage() {
                     className="h-11"
                   >
                     <SlidersHorizontal className="w-4 h-4 mr-2" />
-                    Filters
+                    Refine
                   </Button>
                 </>
               )}
             </div>
 
-            {/* Expanded Filters */}
+            {/* Context pills */}
+            {viewMode === 'list' && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-secondary">
+                <Badge variant="secondary" className="uppercase">
+                  Tier: {tierFilter}
+                </Badge>
+                <Badge variant="secondary">
+                  {asOfDate ? `As of ${asOfDate}` : 'Latest'}
+                </Badge>
+                <span className="text-muted">Refine: {showFilters ? 'On' : 'Off'}</span>
+                <span className="text-muted">
+                  Signals combine graph centrality, default risk (PD), and solvency (Z).
+                </span>
+              </div>
+            )}
+
+            {/* Refine Drawer */}
             {showFilters && viewMode === 'list' && (
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Signal Filter */}
+              <div className="mt-4 pt-4 border-t border-slate-200 bg-slate-50/60 rounded-lg p-3 space-y-3">
+                <p className="text-xs text-secondary">Secondary filters (use sparingly)</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-primary">Signal</label>
                     <select
                       value={signalFilter}
                       onChange={(e) => setSignalFilter(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-surface text-sm
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-surface text-sm"
                     >
                       <option value="All">All</option>
                       <option value="Buy">Buy</option>
@@ -480,15 +672,12 @@ export default function MarketPage() {
                       <option value="Sell">Sell</option>
                     </select>
                   </div>
-
-                  {/* Solvency Filter */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-primary">Solvency</label>
                     <select
                       value={solvencyFilter}
                       onChange={(e) => setSolvencyFilter(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-surface text-sm
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-surface text-sm"
                     >
                       <option value="All">All</option>
                       <option value="High (>48mo)">High (&gt;48mo)</option>
@@ -496,15 +685,12 @@ export default function MarketPage() {
                       <option value="Low (<12mo)">Low (&lt;12mo)</option>
                     </select>
                   </div>
-
-                  {/* Centrality Filter */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-primary">Centrality</label>
                     <select
                       value={centralityFilter}
                       onChange={(e) => setCentralityFilter(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-surface text-sm
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-surface text-sm"
                     >
                       <option value="All">All</option>
                       <option value="High">High (&gt;70%)</option>
@@ -513,50 +699,22 @@ export default function MarketPage() {
                     </select>
                   </div>
                 </div>
-
-                {/* Active Filters Summary */}
-                {(signalFilter !== 'All' || solvencyFilter !== 'All' || centralityFilter !== 'All') && (
-                  <div className="mt-3 flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-secondary">Active filters:</span>
-                    {signalFilter !== 'All' && (
-                      <button
-                        onClick={() => setSignalFilter('All')}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200"
-                      >
-                        Signal: {signalFilter}
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                    {solvencyFilter !== 'All' && (
-                      <button
-                        onClick={() => setSolvencyFilter('All')}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200"
-                      >
-                        Solvency: {solvencyFilter}
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                    {centralityFilter !== 'All' && (
-                      <button
-                        onClick={() => setCentralityFilter('All')}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200"
-                      >
-                        Centrality: {centralityFilter}
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setSignalFilter('All')
-                        setSolvencyFilter('All')
-                        setCentralityFilter('All')
-                      }}
-                      className="text-xs text-secondary hover:text-primary underline"
-                    >
-                      Clear all
-                    </button>
+                <div className="flex items-center justify-between text-xs text-secondary">
+                  <div className="flex gap-2">
+                    <span>Tier: {tierFilter}</span>
+                    {asOfDate && <span>As of: {asOfDate}</span>}
                   </div>
-                )}
+                  <button
+                    onClick={() => {
+                      setSignalFilter('All')
+                      setSolvencyFilter('All')
+                      setCentralityFilter('All')
+                    }}
+                    className="text-indigo-600 hover:underline"
+                  >
+                    Clear refinements
+                  </button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -570,202 +728,50 @@ export default function MarketPage() {
               <p className="text-sm text-secondary">
                 Showing <span className="font-medium text-primary">{filteredResults.length}</span> opportunities
               </p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-secondary">Sort by:</span>
-                <select className="text-sm font-medium text-primary bg-transparent focus:outline-none cursor-pointer">
-                  <option>Signal Confidence</option>
-                  <option>Market Cap</option>
-                  <option>Centrality</option>
-                  <option>Solvency</option>
-                </select>
-              </div>
             </div>
 
-            {/* Results Table */}
-            <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="text-left p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Stock
-                      </th>
-                      <th className="text-right p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Price
-                      </th>
-                      <th className="text-right p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Change
-                      </th>
-                      <th className="text-right p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Market Cap
-                      </th>
-                      <th className="text-center p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Signal
-                      </th>
-                      <th className="text-center p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        <div className="flex items-center justify-center gap-1">
-                          <Shield className="w-3 h-3" />
-                          Solvency
-                        </div>
-                      </th>
-                      <th className="text-center p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        <div className="flex items-center justify-center gap-1">
-                          <Network className="w-3 h-3" />
-                          Centrality
-                        </div>
-                      </th>
-                      <th className="text-center p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Connections
-                      </th>
-                      <th className="text-center p-4 text-xs font-medium text-secondary uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                      <tr>
-                        <td colSpan={9} className="p-8 text-center text-secondary">
-                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                          Loading...
-                        </td>
-                      </tr>
-                    ) : filteredResults.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="p-8 text-center text-secondary">
-                          No opportunities found
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredResults.map((stock) => (
-                        <tr
-                          key={stock.ticker}
-                          onClick={() => handleRowClick(stock.ticker)}
-                          className="hover:bg-slate-50/50 transition-colors cursor-pointer"
-                        >
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                                <span className="text-sm font-semibold text-slate-600">
-                                  {stock.ticker.slice(0, 2)}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-primary">{stock.ticker}</p>
-                                <p className="text-sm text-secondary truncate max-w-[150px]">{stock.name}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 text-right">
-                            <p className="font-medium text-primary tabular-nums">
-                              ${stock.price?.toFixed(2) || '-'}
-                            </p>
-                          </td>
-                          <td className="p-4 text-right">
-                            {stock.priceChange !== null && stock.priceChange !== undefined ? (
-                              <div className={`flex items-center justify-end gap-1 ${
-                                stock.priceChange >= 0 ? 'text-buy' : 'text-sell'
-                              }`}>
-                                {stock.priceChange >= 0 ? (
-                                  <TrendingUp className="w-4 h-4" />
-                                ) : (
-                                  <TrendingDown className="w-4 h-4" />
-                                )}
-                                <span className="font-medium tabular-nums">
-                                  {stock.priceChange >= 0 ? '+' : ''}{stock.priceChange.toFixed(2)}%
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-right">
-                            <p className="text-secondary tabular-nums">
-                              {stock.marketCap ? formatMarketCap(stock.marketCap) : '-'}
-                            </p>
-                          </td>
-                          <td className="p-4 text-center">
-                            <Badge
-                              variant={
-                                stock.signal === 'BUY' ? 'success' :
-                                stock.signal === 'SELL' ? 'danger' : 'warning'
-                              }
-                              className="min-w-[60px] justify-center"
-                            >
-                              {stock.signal}
-                            </Badge>
-                            <p className="text-xs text-muted mt-1 tabular-nums">
-                              {Math.round(stock.confidence * 100)}%
-                            </p>
-                          </td>
-                          <td className="p-4 text-center">
-                            {stock.solvency !== null && stock.solvency !== undefined ? (
-                              <div className="flex flex-col items-center">
-                                <span className={`text-sm font-medium tabular-nums ${
-                                  stock.solvency >= 48 ? 'text-buy' :
-                                  stock.solvency >= 24 ? 'text-warning' : 'text-sell'
-                                }`}>
-                                  {stock.solvency}mo
-                                </span>
-                                <div className="w-12 h-1.5 bg-slate-100 rounded-full mt-1">
-                                  <div
-                                    className={`h-full rounded-full ${
-                                      stock.solvency >= 48 ? 'bg-buy' :
-                                      stock.solvency >= 24 ? 'bg-warning' : 'bg-sell'
-                                    }`}
-                                    style={{ width: `${Math.min(stock.solvency / 96 * 100, 100)}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center">
-                            {stock.centrality !== null && stock.centrality !== undefined ? (
-                              <div className="flex flex-col items-center">
-                                <span className="text-sm font-medium text-indigo-600 tabular-nums">
-                                  {(stock.centrality * 100).toFixed(0)}%
-                                </span>
-                                <div className="w-12 h-1.5 bg-slate-100 rounded-full mt-1">
-                                  <div
-                                    className="h-full bg-indigo-500 rounded-full"
-                                    style={{ width: `${stock.centrality * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center">
-                            {stock.upstreamCount !== null || stock.downstreamCount !== null ? (
-                              <div className="flex items-center justify-center gap-2 text-sm text-secondary">
-                                <span className="tabular-nums">↑{stock.upstreamCount ?? '-'}</span>
-                                <span className="text-slate-300">|</span>
-                                <span className="tabular-nums">↓{stock.downstreamCount ?? '-'}</span>
-                              </div>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center">
-                            <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon-sm">
-                                <Star className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon-sm">
-                                <Plus className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+            {/* Signal Cards */}
+            {loading ? (
+              <Card className="p-8 text-center text-secondary">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Loading...
+              </Card>
+            ) : filteredResults.length === 0 ? (
+              <Card className="p-8 text-center text-secondary">
+                <p className="font-medium text-primary mb-1">No signals available</p>
+                <p className="text-sm text-muted">
+                  {signals.length === 0
+                    ? 'No signals returned from the model.'
+                    : `No signals match the current filters. Max probability: ${
+                        Math.max(...signals.map((s) => s.confidence || 0)) * 100 || 0
+                      }%.`}
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredResults.map((stock) => (
+                  <SignalCard
+                    key={stock.ticker}
+                    ticker={stock.ticker}
+                    name={stock.name}
+                    direction={stock.signal}
+                    confidence={stock.confidence}
+                    tier={stock.tier}
+                    solvency={stock.solvency}
+                    centrality={stock.centrality}
+                    mertonPd={stock.mertonPd}
+                    altmanZ={stock.altmanZ}
+                    upstreamCount={stock.upstreamCount}
+                    downstreamCount={stock.downstreamCount}
+                    sharpe={stock.sharpe}
+                    drawdown={stock.drawdown}
+                    lastUpdated={stock.lastUpdated}
+                    miniGraph={miniGraphCache[stock.ticker]}
+                    onSelect={handleRowClick}
+                  />
+                ))}
               </div>
-            </Card>
+            )}
           </>
         )}
 

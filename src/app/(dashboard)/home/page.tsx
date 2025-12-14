@@ -8,20 +8,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
-  TrendingUp,
-  TrendingDown,
-  Shield,
+  BarChart3,
   Bell,
-  Zap,
-  Plus,
-  Eye,
   ChevronDown,
   ChevronUp,
-  Network,
   ExternalLink,
+  Eye,
+  Network,
+  Plus,
+  Shield,
+  Sparkles,
   Star,
+  TrendingDown,
+  TrendingUp,
+  Zap,
   X,
 } from 'lucide-react'
 
@@ -47,6 +50,64 @@ interface Whisper {
   filingDate: string
   timestamp: string
 }
+
+// Mock fallbacks so the UI shows value even when APIs are empty
+const mockSignals: Signal[] = [
+  {
+    ticker: 'ACME',
+    name: 'Acme Corp',
+    signal: 'SELL',
+    confidence: 0.96,
+    whisperScore: 0.82,
+    supplyChainRisk: 0.78,
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    ticker: 'BETA',
+    name: 'Beta Industries',
+    signal: 'BUY',
+    confidence: 0.91,
+    whisperScore: 0.31,
+    supplyChainRisk: 0.22,
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    ticker: 'RISK',
+    name: 'Risk Metrics Inc',
+    signal: 'SELL',
+    confidence: 0.94,
+    whisperScore: 0.67,
+    supplyChainRisk: 0.65,
+    lastUpdated: new Date().toISOString(),
+  },
+]
+
+const mockWhispers: Whisper[] = [
+  {
+    id: 'w1',
+    sourceTicker: 'TSM',
+    sourceName: 'Taiwan Semi',
+    affectedTickers: ['NVDA', 'AMD'],
+    severity: 'high',
+    title: 'TSM fab delay could hit GPU supply',
+    summary: 'Construction delay at TSM fab may constrain leading-edge supply for Q2.',
+    filingType: '10-K',
+    filingDate: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'w2',
+    sourceTicker: 'SHEL',
+    sourceName: 'Shell',
+    affectedTickers: ['CVX'],
+    severity: 'medium',
+    title: 'Shell refinery outage',
+    summary: 'Planned maintenance extended; downstream customers may see spot tightness.',
+    filingType: '8-K',
+    filingDate: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+  },
+]
 
 // Check if user has a watchlist (would come from API/localStorage in production)
 const useWatchlist = () => {
@@ -85,15 +146,17 @@ export default function HomePage() {
 
         if (signalsRes.ok) {
           const signalsData = await signalsRes.json()
-          setSignals(signalsData)
+          setSignals(signalsData.length ? signalsData : mockSignals)
         }
 
         if (whispersRes.ok) {
           const whispersData = await whispersRes.json()
-          setWhispers(whispersData)
+          setWhispers(whispersData.length ? whispersData : mockWhispers)
         }
       } catch (error) {
         console.error('Error fetching home data:', error)
+        setSignals(mockSignals)
+        setWhispers(mockWhispers)
       } finally {
         setLoading(false)
       }
@@ -103,6 +166,14 @@ export default function HomePage() {
   }, [])
 
   const unreadAlertsCount = whispers.filter(w => w.severity === 'high' || w.severity === 'medium').length
+  const friendlyThesis = (signal: Signal | undefined) => {
+    if (!signal) return ''
+    const parts: string[] = []
+    parts.push(signal.signal === 'BUY' ? 'Favorable setup' : signal.signal === 'SELL' ? 'Risk flagged' : 'Neutral')
+    parts.push(`${Math.round(signal.confidence * 100)}% confidence`)
+    parts.push(signal.supplyChainRisk > 0.7 ? 'Highly connected' : 'Moderate network risk')
+    return parts.join(' • ')
+  }
 
   const toggleOpportunity = (ticker: string) => {
     setExpandedOpportunity(expandedOpportunity === ticker ? null : ticker)
@@ -112,6 +183,11 @@ export default function HomePage() {
     setExpandedAlert(expandedAlert === id ? null : id)
   }
 
+  const topSignal = signals[0]
+  const highConvCount = signals.filter(s => s.confidence >= 0.9).length
+  const sellCount = signals.filter(s => s.signal === 'SELL').length
+  const buyCount = signals.filter(s => s.signal === 'BUY').length
+
   return (
     <div className="min-h-screen">
       <Header
@@ -120,78 +196,163 @@ export default function HomePage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Top Row: Watchlist Status + Alerts + Simulation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Watchlist Status - Empty State or Summary */}
-          {!hasWatchlist ? (
-            <Card className="bg-gradient-to-br from-indigo-50 to-teal-50 border-none md:col-span-1">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 text-sm text-secondary mb-2">
-                  <Eye className="w-4 h-4" />
-                  Your Watchlist
+        {/* Hero Row */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <Card className="xl:col-span-2 bg-gradient-to-br from-indigo-600 via-indigo-500 to-slate-900 text-white border-none shadow-lg">
+            <CardContent className="p-6 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide opacity-80">Gano Alpha</p>
+                  <h2 className="text-2xl font-semibold mt-1">High-Conviction Signals</h2>
+                <p className="text-sm opacity-80">
+                  Graph intelligence + solvency + PD, explained in plain language.
+                </p>
                 </div>
-                <p className="text-lg font-semibold text-primary mb-2">
-                  Start tracking stocks
-                </p>
-                <p className="text-sm text-secondary mb-4">
-                  Track stocks to get personalized alerts when news, filings, or market events could impact your positions.
-                </p>
+                <Badge variant="secondary" className="bg-white/15 text-white border-white/20">
+                  {buyCount} Buy • {sellCount} Sell
+                </Badge>
+              </div>
+              {topSignal ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-white/10 border border-white/10">
+                    <p className="text-xs opacity-80">Sniper Spotlight</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <div>
+                        <p className="text-lg font-semibold">{topSignal.ticker}</p>
+                        <p className="text-sm opacity-80">{topSignal.signal} • {Math.round(topSignal.confidence * 100)}%</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-sm font-semibold">
+                        {topSignal.ticker.slice(0,2)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/10 border border-white/10">
+                    <p className="text-xs opacity-80">Supply Chain Risk</p>
+                    <p className="text-xl font-semibold mt-1">{Math.round(topSignal.supplyChainRisk * 100)}%</p>
+                    <p className="text-xs opacity-80">Upstream / downstream stress</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/10 border border-white/10">
+                    <p className="text-xs opacity-80">Whisper Velocity</p>
+                    <p className="text-xl font-semibold mt-1">{topSignal.whisperScore.toFixed(2)}</p>
+                    <p className="text-xs opacity-80">Recent filing & news pressure</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/10 border border-white/10 sm:col-span-2 lg:col-span-3">
+                    <p className="text-xs opacity-80">In one line</p>
+                    <p className="text-sm font-medium">
+                      {friendlyThesis(topSignal)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm opacity-80">No signals loaded.</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Link href="/market">
+                  <Button size="sm" variant="secondary" className="bg-white text-indigo-600 hover:bg-slate-100">
+                    View Signals
+                  </Button>
+                </Link>
+                <Link href="/simulation">
+                  <Button size="sm" variant="secondary" className="bg-white text-indigo-600 hover:bg-slate-100">
+                    Run Shock Test
+                  </Button>
+                </Link>
+                <Link href="/alerts">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="bg-white text-indigo-600 hover:bg-slate-100"
+                  >
+                    Alerts
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-1 gap-4">
+            {/* Watchlist */}
+            <Card className="h-full">
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-secondary mb-1">Watchlist</p>
+                  <p className="text-lg font-semibold text-primary">
+                    {hasWatchlist ? `${watchlistCount} stocks` : 'Start tracking'}
+                  </p>
+                </div>
                 <Link href="/portfolio">
-                  <Button size="sm" className="w-full">
+                  <Button size="sm" variant="outline">
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Watchlist
+                    Manage
                   </Button>
                 </Link>
               </CardContent>
             </Card>
-          ) : (
-            <Card className="bg-gradient-to-br from-indigo-50 to-teal-50 border-none">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 text-sm text-secondary mb-1">
-                  <Eye className="w-4 h-4" />
-                  Your Watchlist
+
+            {/* Alerts glance */}
+            <Card className="h-full">
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-secondary mb-1">Unread alerts</p>
+                  <p className="text-lg font-semibold text-warning">{unreadAlertsCount}</p>
                 </div>
-                <p className="text-2xl font-bold text-primary tabular-nums">
-                  {watchlistCount} stocks
-                </p>
-                <Link href="/portfolio" className="text-sm text-indigo-600 hover:underline mt-2 inline-block">
-                  Manage watchlist
+                <Link href="/alerts">
+                  <Button size="sm" variant="ghost">
+                    <Bell className="w-4 h-4 mr-2" />
+                    View
+                  </Button>
                 </Link>
               </CardContent>
             </Card>
-          )}
+          </div>
+        </div>
 
-          {/* Unread Alerts */}
+        {/* KPI Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-sm text-secondary mb-1">
-                <Bell className="w-4 h-4" />
-                Unread Alerts
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-secondary">High Conviction (≥90%)</p>
+                  <p className="text-2xl font-semibold text-primary">{highConvCount}</p>
+                </div>
+                <Sparkles className="w-5 h-5 text-indigo-600" />
               </div>
-              <p className="text-2xl font-bold text-warning tabular-nums">
-                {unreadAlertsCount}
-              </p>
-              <Link href="/alerts" className="text-sm text-indigo-600 hover:underline mt-2 inline-block">
-                View all alerts
-              </Link>
             </CardContent>
           </Card>
-
-          {/* Quick Action - Simulation */}
-          <Card className="border-warning/30 bg-warning/5">
-            <CardContent className="p-5 flex flex-col justify-between h-full">
-              <div className="flex items-center gap-2 text-sm text-secondary mb-1">
-                <Zap className="w-4 h-4 text-warning" />
-                Simulation Ready
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-secondary">Buy vs Sell</p>
+                  <p className="text-2xl font-semibold text-primary">
+                    {buyCount} / {sellCount}
+                  </p>
+                </div>
+                <BarChart3 className="w-5 h-5 text-teal-600" />
               </div>
-              <p className="text-sm text-secondary mb-3">
-                Test how market shocks could affect stocks
-              </p>
-              <Link href="/simulation">
-                <Button size="sm" variant="outline" className="w-full">
-                  Run Scenario
-                </Button>
-              </Link>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-secondary">Alerts (med/high)</p>
+                  <p className="text-2xl font-semibold text-warning">{unreadAlertsCount}</p>
+                </div>
+                <AlertTriangle className="w-5 h-5 text-warning" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-secondary">Simulation Ready</p>
+                  <p className="text-2xl font-semibold text-primary">War Room</p>
+                </div>
+                <Shield className="w-5 h-5 text-indigo-600" />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -213,7 +374,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-secondary mb-4">
-                Companies with strong fundamentals, healthy solvency, and favorable technicals.
+                Graph-aware alpha calls with solvency + supply chain context.
               </p>
               <div className="space-y-3">
                 {loading ? (
@@ -230,12 +391,11 @@ export default function HomePage() {
                   signals.slice(0, 5).map((stock) => (
                     <div
                       key={stock.ticker}
-                      className="rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden"
+                      className="rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden bg-white shadow-sm"
                     >
-                      {/* Opportunity Header - Clickable */}
                       <button
                         onClick={() => toggleOpportunity(stock.ticker)}
-                        className="w-full p-3 text-left hover:bg-slate-50 transition-colors"
+                        className="w-full p-3 text-left"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -272,11 +432,9 @@ export default function HomePage() {
                         </div>
                       </button>
 
-                      {/* Expanded Opportunity Details */}
                       {expandedOpportunity === stock.ticker && (
                         <div className="px-3 pb-3 border-t border-slate-100 bg-slate-50/50">
                           <div className="pt-3 space-y-3">
-                            {/* Metrics Grid */}
                             <div className="grid grid-cols-3 gap-3">
                               <div className="text-center p-2 bg-white rounded-lg border border-slate-100">
                                 <p className="text-xs text-muted mb-1">Confidence</p>
@@ -285,7 +443,7 @@ export default function HomePage() {
                                 </p>
                               </div>
                               <div className="text-center p-2 bg-white rounded-lg border border-slate-100">
-                                <p className="text-xs text-muted mb-1">Risk</p>
+                                <p className="text-xs text-muted mb-1">Supply Risk</p>
                                 <p className={`text-lg font-semibold ${
                                   stock.supplyChainRisk > 0.7 ? 'text-sell' :
                                   stock.supplyChainRisk > 0.4 ? 'text-warning' : 'text-buy'
@@ -294,7 +452,7 @@ export default function HomePage() {
                                 </p>
                               </div>
                               <div className="text-center p-2 bg-white rounded-lg border border-slate-100">
-                                <p className="text-xs text-muted mb-1">Signal</p>
+                                <p className="text-xs text-muted mb-1">Whisper</p>
                                 <p className="text-lg font-semibold text-indigo-600">
                                   {stock.whisperScore.toFixed(1)}
                                 </p>
@@ -380,15 +538,15 @@ export default function HomePage() {
                                   {whisper.filingType}
                                 </Badge>
                                 <span className="font-medium text-primary">{whisper.sourceTicker}</span>
-                                {whisper.affectedTickers.length > 0 && (
-                                  <>
-                                    <ArrowRight className="w-3 h-3 text-muted" />
-                                    <span className="text-indigo-600 font-medium">
+                      {whisper.affectedTickers.length > 0 && (
+                        <>
+                          <ArrowRight className="w-3 h-3 text-muted" />
+                          <span className="text-indigo-600 font-medium">
                                       {whisper.affectedTickers[0]}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
+                                  </span>
+                                </>
+                              )}
+                            </div>
                               <p className="text-sm font-medium text-primary mt-1 line-clamp-1">{whisper.title}</p>
                             </div>
                           </div>

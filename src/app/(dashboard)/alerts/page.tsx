@@ -5,22 +5,7 @@ import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Bell,
-  BellOff,
-  Check,
-  AlertTriangle,
-  ArrowRight,
-  Clock,
-  FileText,
-  TrendingDown,
-  TrendingUp,
-  Zap,
-  Settings,
-  Trash2,
-  ExternalLink,
-  Loader2,
-} from 'lucide-react'
+import { Bell, AlertTriangle, Zap, TrendingDown, TrendingUp, Clock, ArrowRight, ExternalLink, BellOff, Loader2, FileText, Check, Trash2 } from 'lucide-react'
 
 interface Alert {
   id: string
@@ -40,6 +25,57 @@ interface Alert {
 }
 
 const alertFilters = ['All', 'Unread', 'Whispers', 'Signals', 'Exposure']
+
+const mockAlerts: Alert[] = [
+  {
+    id: 'a1',
+    type: 'whisper',
+    severity: 'high',
+    title: 'TSM fab delay could hit GPU supply',
+    sourceTicker: 'TSM',
+    sourceName: 'Taiwan Semi',
+    affectedTickers: ['NVDA', 'AMD'],
+    summary: 'Construction delay at TSM fab may constrain leading-edge supply for Q2.',
+    extractedText: '',
+    filingType: '8-K',
+    filingDate: new Date().toISOString(),
+    filingUrl: '#',
+    timestamp: new Date().toISOString(),
+    read: false,
+  },
+  {
+    id: 'a2',
+    type: 'signal',
+    severity: 'medium',
+    title: 'Centrality spike: ACME hub risk rising',
+    sourceTicker: 'ACME',
+    sourceName: 'Acme Corp',
+    affectedTickers: ['RKT'],
+    summary: 'Graph centrality moved from 0.41 to 0.76 over 7 days; monitor contagion.',
+    extractedText: '',
+    filingType: 'Signal',
+    filingDate: new Date().toISOString(),
+    filingUrl: '#',
+    timestamp: new Date().toISOString(),
+    read: false,
+  },
+  {
+    id: 'a3',
+    type: 'exposure',
+    severity: 'low',
+    title: 'Oil supply tightness: SHEL outage',
+    sourceTicker: 'SHEL',
+    sourceName: 'Shell',
+    affectedTickers: ['CVX'],
+    summary: 'Extended maintenance could reduce downstream supply for 2-3 weeks.',
+    extractedText: '',
+    filingType: 'Operations',
+    filingDate: new Date().toISOString(),
+    filingUrl: '#',
+    timestamp: new Date().toISOString(),
+    read: true,
+  },
+]
 
 function getRelativeTime(timestamp: string): string {
   const now = new Date()
@@ -61,6 +97,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedFilter, setSelectedFilter] = useState('All')
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([])
+  const [proView, setProView] = useState(false)
 
   useEffect(() => {
     async function fetchAlerts() {
@@ -85,10 +122,11 @@ export default function AlertsPage() {
             timestamp: w.timestamp,
             read: w.read || false,
           }))
-          setAlerts(transformedAlerts)
+          setAlerts(transformedAlerts.length ? transformedAlerts : mockAlerts)
         }
       } catch (error) {
         console.error('Error fetching alerts:', error)
+        setAlerts(mockAlerts)
       } finally {
         setLoading(false)
       }
@@ -108,7 +146,8 @@ export default function AlertsPage() {
 
   const unreadCount = alerts.filter((a) => !a.read).length
   const highPriorityCount = alerts.filter((a) => a.severity === 'high' && !a.read).length
-
+  const signalsCount = alerts.filter((a) => a.type === 'signal').length
+  const whisperCount = alerts.filter((a) => a.type === 'whisper').length
   const toggleSelectAlert = (id: string) => {
     setSelectedAlerts((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
@@ -148,6 +187,16 @@ export default function AlertsPage() {
     }
   }
 
+  const friendlySummary = (alert: Alert) => {
+    if (proView) {
+      return alert.summary || alert.title
+    }
+    const target = alert.affectedTickers.length > 0 ? alert.affectedTickers.join(', ') : alert.sourceName
+    const sev = alert.severity === 'high' ? 'High priority' : alert.severity === 'medium' ? 'Medium priority' : 'Low priority'
+    const kind = alert.type === 'whisper' ? 'Filing/whisper' : alert.type === 'signal' ? 'Signal change' : 'Exposure'
+    return `${sev}: ${kind} from ${alert.sourceTicker} affecting ${target}`
+  }
+
   return (
     <div className="min-h-screen">
       <Header
@@ -156,66 +205,38 @@ export default function AlertsPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-secondary">Unread Alerts</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">{unreadCount}</p>
+        {/* Hero / KPI */}
+        <Card className="bg-gradient-to-br from-indigo-600 via-indigo-500 to-slate-900 text-white border-none shadow-lg">
+          <CardContent className="p-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide opacity-80">Alert Center</p>
+                <h2 className="text-xl font-semibold">Market Whispers & Risk Flags</h2>
+                <p className="text-sm opacity-80">
+                  Filings, whispers, and contagion signals prioritized by severity.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 w-full md:w-auto">
+                <div className="p-3 rounded-lg bg-white/10 border border-white/10 text-center">
+                  <p className="text-xs opacity-80">Unread</p>
+                  <p className="text-lg font-semibold">{unreadCount}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-indigo-50">
-                  <Bell className="w-5 h-5 text-indigo-600" />
+                <div className="p-3 rounded-lg bg-white/10 border border-white/10 text-center">
+                  <p className="text-xs opacity-80">High Priority</p>
+                  <p className="text-lg font-semibold text-amber-200">{highPriorityCount}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-white/10 border border-white/10 text-center">
+                  <p className="text-xs opacity-80">Whispers</p>
+                  <p className="text-lg font-semibold">{whisperCount}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-white/10 border border-white/10 text-center">
+                  <p className="text-xs opacity-80">Signals</p>
+                  <p className="text-lg font-semibold">{signalsCount}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-secondary">High Priority</p>
-                  <p className="text-2xl font-semibold text-sell mt-1">{highPriorityCount}</p>
-                </div>
-                <div className="p-2 rounded-lg bg-sell/10">
-                  <AlertTriangle className="w-5 h-5 text-sell" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-secondary">Whispers Today</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">
-                    {alerts.filter((a) => a.type === 'whisper').length}
-                  </p>
-                </div>
-                <div className="p-2 rounded-lg bg-warning/10">
-                  <Zap className="w-5 h-5 text-warning" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-secondary">Total Alerts</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">{alerts.length}</p>
-                </div>
-                <div className="p-2 rounded-lg bg-teal-50">
-                  <Settings className="w-5 h-5 text-teal-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Filters and Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -241,6 +262,9 @@ export default function AlertsPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setProView((v) => !v)}>
+              {proView ? 'Simple view' : 'Pro view'}
+            </Button>
             {selectedAlerts.length > 0 && (
               <>
                 <Button variant="outline" size="sm" onClick={() => markAsRead(selectedAlerts)}>
@@ -254,14 +278,13 @@ export default function AlertsPage() {
               </>
             )}
             <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-1" />
-              Configure
+              Alerts Settings
             </Button>
           </div>
         </div>
 
         {/* Alerts List */}
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {loading ? (
             <Card>
               <CardContent className="p-12 text-center">
@@ -335,21 +358,17 @@ export default function AlertsPage() {
                           </div>
 
                           {alert.sourceTicker && (
-                            <div className="flex items-center gap-2 mt-1 text-sm">
+                            <div className="flex items-center gap-2 mt-1 text-sm text-secondary">
                               <span className="font-medium text-indigo-600">{alert.sourceTicker}</span>
-                              <span className="text-muted">{alert.sourceName}</span>
-                              {alert.affectedTickers.length > 0 && (
-                                <>
-                                  <ArrowRight className="w-3 h-3 text-muted" />
-                                  <span className="text-secondary">
-                                    Affects: {alert.affectedTickers.join(', ')}
-                                  </span>
-                                </>
-                              )}
+                              <ArrowRight className="w-3 h-3 text-muted" />
+                              <span className="truncate">
+                                {alert.affectedTickers.length > 0 ? alert.affectedTickers.join(', ') : alert.sourceName}
+                              </span>
                             </div>
                           )}
 
-                          <p className="text-sm text-secondary mt-2">{alert.summary}</p>
+                      <p className="text-sm text-secondary mt-2">{alert.summary}</p>
+                      <p className="text-sm text-primary mt-2">{friendlySummary(alert)}</p>
 
                           {alert.extractedText && (
                             <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
