@@ -13,9 +13,15 @@ interface MarketData {
 }
 
 // Fetch real-time price from backend's last_prices table
-async function fetchRealtimePrice(ticker: string): Promise<MarketData | null> {
+async function fetchRealtimePrice(ticker: string, authHeader?: string | null): Promise<MarketData | null> {
   try {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     const response = await fetch(`${BACKEND_URL}/market/price/${ticker}`, {
+      headers,
       cache: 'no-store',
     })
 
@@ -24,6 +30,7 @@ async function fetchRealtimePrice(ticker: string): Promise<MarketData | null> {
 
       // Also fetch OHLCV for previous close to calculate change
       const ohlcvResponse = await fetch(`${BACKEND_URL}/market/ohlcv/${ticker}?limit=2`, {
+        headers,
         cache: 'no-store',
       })
 
@@ -41,6 +48,7 @@ async function fetchRealtimePrice(ticker: string): Promise<MarketData | null> {
 
       // Fetch ticker context for market cap
       const contextResponse = await fetch(`${BACKEND_URL}/tickers/${ticker}/context`, {
+        headers,
         cache: 'no-store',
       })
 
@@ -73,6 +81,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tickers = searchParams.get('tickers')?.split(',').filter(Boolean) || []
 
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   if (tickers.length === 0) {
     return NextResponse.json({ error: 'No tickers provided' }, { status: 400 })
   }
@@ -80,7 +91,7 @@ export async function GET(request: NextRequest) {
   try {
     // Fetch all tickers in parallel from backend's realtime table
     const results = await Promise.all(
-      tickers.map(ticker => fetchRealtimePrice(ticker.trim().toUpperCase()))
+      tickers.map(ticker => fetchRealtimePrice(ticker.trim().toUpperCase(), authHeader))
     )
 
     // Build response object

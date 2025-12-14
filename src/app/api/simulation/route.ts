@@ -33,6 +33,9 @@ interface SimulationResult {
 }
 
 export async function POST(request: NextRequest) {
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   try {
     const body: SimulationRequest = await request.json()
 
@@ -43,11 +46,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Build headers with auth forwarding
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     // Try to call backend simulation API first
     try {
       const response = await fetch(`${BACKEND_URL}/api/simulate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       })
 
@@ -60,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze scenario using real supply chain data from backend
-    const result = await analyzeScenario(body.scenario, body.portfolioTickers)
+    const result = await analyzeScenario(body.scenario, body.portfolioTickers, authHeader)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Simulation error:', error)
@@ -73,7 +82,8 @@ export async function POST(request: NextRequest) {
 
 async function analyzeScenario(
   scenario: string,
-  portfolioTickers?: string[]
+  portfolioTickers?: string[],
+  authHeader?: string | null
 ): Promise<SimulationResult> {
   // Extract ticker mentions from scenario (e.g., NVDA, AAPL, TSM)
   const tickerPattern = /\b([A-Z]{1,5})\b/g
@@ -112,8 +122,15 @@ async function analyzeScenario(
     if (processedTickers.has(ticker)) continue
 
     try {
+      // Build headers with auth forwarding
+      const fetchHeaders: HeadersInit = { 'Content-Type': 'application/json' }
+      if (authHeader) {
+        fetchHeaders['Authorization'] = authHeader
+      }
+
       // Fetch real supply chain data from backend
       const response = await fetch(`${BACKEND_URL}/api/supply-chain/${ticker}`, {
+        headers: fetchHeaders,
         cache: 'no-store'
       })
 

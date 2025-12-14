@@ -28,6 +28,9 @@ interface PortfolioExposure {
 }
 
 export async function POST(request: NextRequest) {
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   try {
     const body = await request.json()
     const { tickers } = body
@@ -39,11 +42,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Build headers with auth forwarding
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     // Try backend first
     try {
       const response = await fetch(`${BACKEND_URL}/api/portfolio/exposure`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ tickers }),
       })
 

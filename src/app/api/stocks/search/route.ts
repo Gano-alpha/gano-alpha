@@ -39,12 +39,21 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '10')
   const sector = searchParams.get('sector')
 
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   try {
     let url = `${BACKEND_URL}/api/stocks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     if (sector) url += `&sector=${encodeURIComponent(sector)}`
 
+    // Build headers with auth forwarding
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       next: { revalidate: 300 },
     })
 
