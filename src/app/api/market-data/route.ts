@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.138.246.157:8000'
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.150.133.161:8000'
 
 interface MarketData {
   ticker: string

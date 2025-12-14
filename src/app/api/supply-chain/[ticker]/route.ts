@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Backend API URL - will be configured via environment variable
-const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.138.246.157:8000'
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.150.133.161:8000'
 
 interface SupplyChainEdge {
   source_ticker: string
@@ -38,10 +38,12 @@ export async function GET(
   { params }: { params: { ticker: string } }
 ) {
   const ticker = params.ticker.toUpperCase()
+  const { searchParams } = new URL(request.url)
+  const limit = searchParams.get('limit') || '5'
 
   try {
-    // Fetch supply chain data from backend
-    const response = await fetch(`${BACKEND_URL}/api/supply-chain/${ticker}`, {
+    // Fetch mini-graph from backend
+    const response = await fetch(`${BACKEND_URL}/v1/mini-graph/${ticker}?limit=${limit}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -50,9 +52,26 @@ export async function GET(
     })
 
     if (response.ok) {
-      // Backend returns data in the correct format, pass it through
       const data = await response.json()
-      return NextResponse.json(data)
+      // Map mini-graph shape to expected shape
+      return NextResponse.json({
+        ticker: data.ticker,
+        name: data.name,
+        suppliers: (data.suppliers || []).map((s: any, idx: number) => ({
+          id: s.id || `supplier-${idx}`,
+          ticker: s.ticker,
+          name: s.name,
+          relation: s.relation || 'Supplier',
+          confidence: s.confidence || 0,
+        })),
+        customers: (data.customers || []).map((c: any, idx: number) => ({
+          id: c.id || `customer-${idx}`,
+          ticker: c.ticker,
+          name: c.name,
+          relation: c.relation || 'Customer',
+          confidence: c.confidence || 0,
+        })),
+      })
     }
 
     // If backend fails, return mock data
