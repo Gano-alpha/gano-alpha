@@ -5,12 +5,19 @@ const BACKEND_URL = process.env.BACKEND_API_URL || 'http://3.150.133.161:8000'
 interface StockResult {
   ticker: string
   name: string
-  sector: string
-  signal?: 'BUY' | 'HOLD' | 'SELL'
+  sector: string | null
+  signal?: 'BUY' | 'HOLD' | 'SELL' | null
 }
 
-// Stock database for search (fallback)
-const stocks: StockResult[] = [
+interface StockSearchResponse {
+  data: StockResult[]
+  isDemo: boolean
+  total: number
+  limit: number
+}
+
+// Fallback stock database for when backend is unavailable
+const fallbackStocks: StockResult[] = [
   { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Semiconductors', signal: 'BUY' },
   { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Consumer Electronics', signal: 'HOLD' },
   { ticker: 'MSFT', name: 'Microsoft Corporation', sector: 'Software', signal: 'BUY' },
@@ -39,34 +46,36 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '10')
   const sector = searchParams.get('sector')
 
-  // Forward Authorization header from client
   const authHeader = request.headers.get('Authorization')
 
   try {
-    let url = `${BACKEND_URL}/api/stocks/search?q=${encodeURIComponent(query)}&limit=${limit}`
-    if (sector) url += `&sector=${encodeURIComponent(sector)}`
+    // Build URL for new /v1/stocks/search endpoint
+    const url = new URL(`${BACKEND_URL}/v1/stocks/search`)
+    url.searchParams.set('q', query)
+    url.searchParams.set('limit', String(limit))
+    if (sector) url.searchParams.set('sector', sector)
 
-    // Build headers with auth forwarding
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (authHeader) {
       headers['Authorization'] = authHeader
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       headers,
-      next: { revalidate: 300 },
+      cache: 'no-store',
     })
 
     if (response.ok) {
-      const data = await response.json()
-      return NextResponse.json({ data, isDemo: false })
+      const data: StockSearchResponse = await response.json()
+      // Backend now returns the correct shape with isDemo flag
+      return NextResponse.json(data)
     }
   } catch (error) {
     console.error('Error fetching stocks:', error)
   }
 
   // Fallback to local data with demo indicator
-  let results = stocks
+  let results = fallbackStocks
 
   if (query) {
     const q = query.toLowerCase()
@@ -79,12 +88,15 @@ export async function GET(request: NextRequest) {
 
   if (sector) {
     results = results.filter((stock) =>
-      stock.sector.toLowerCase().includes(sector.toLowerCase())
+      stock.sector?.toLowerCase().includes(sector.toLowerCase())
     )
   }
 
+  const filteredResults = results.slice(0, limit)
   return NextResponse.json({
-    data: results.slice(0, limit),
+    data: filteredResults,
     isDemo: true,
+    total: filteredResults.length,
+    limit,
   })
 }
