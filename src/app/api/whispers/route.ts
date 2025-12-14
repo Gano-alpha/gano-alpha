@@ -24,13 +24,22 @@ export async function GET(request: NextRequest) {
   const ticker = searchParams.get('ticker') // Filter by affected ticker
   const severity = searchParams.get('severity') // Filter by severity
 
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   try {
     let url = `${BACKEND_URL}/api/whispers?limit=${limit}`
     if (ticker) url += `&ticker=${ticker}`
     if (severity) url += `&severity=${severity}`
 
+    // Build headers with auth forwarding
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       next: { revalidate: 60 },
     })
 

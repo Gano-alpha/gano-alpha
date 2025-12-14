@@ -41,12 +41,19 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const limit = searchParams.get('limit') || '5'
 
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   try {
+    // Build headers with auth forwarding
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     // Fetch mini-graph from backend
     const response = await fetch(`${BACKEND_URL}/v1/mini-graph/${ticker}?limit=${limit}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       // Cache for 5 minutes
       next: { revalidate: 300 },
     })

@@ -32,9 +32,15 @@ interface MarketDataResponse {
 }
 
 // Fetch realtime price from backend price API
-async function fetchRealtimePrice(ticker: string): Promise<MarketDataResponse[string]> {
+async function fetchRealtimePrice(ticker: string, authHeader?: string | null): Promise<MarketDataResponse[string]> {
   try {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     const response = await fetch(`${BACKEND_URL}/v1/price/${ticker}`, {
+      headers,
       cache: 'no-store',
     })
 
@@ -54,13 +60,13 @@ async function fetchRealtimePrice(ticker: string): Promise<MarketDataResponse[st
 }
 
 // Fetch market data for multiple tickers
-async function fetchMarketData(tickers: string[]): Promise<MarketDataResponse> {
+async function fetchMarketData(tickers: string[], authHeader?: string | null): Promise<MarketDataResponse> {
   if (tickers.length === 0) {
     return {}
   }
 
   const results = await Promise.all(
-    tickers.map(ticker => fetchRealtimePrice(ticker))
+    tickers.map(ticker => fetchRealtimePrice(ticker, authHeader))
   )
 
   const marketData: MarketDataResponse = {}
@@ -78,15 +84,24 @@ export async function GET(request: NextRequest) {
   const tier = searchParams.get('tier')
   const date = searchParams.get('date') // optional YYYY-MM-DD
 
+  // Forward Authorization header from client
+  const authHeader = request.headers.get('Authorization')
+
   try {
     const query = new URLSearchParams()
     query.set('limit', String(limit))
     if (tier) query.set('tier', tier)
     if (date) query.set('date', date)
 
+    // Build headers with auth forwarding
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authHeader) {
+      headers['Authorization'] = authHeader
+    }
+
     // Use v1 signals endpoint which returns tier + risk fields
     const response = await fetch(`${BACKEND_URL}/v1/signals?${query.toString()}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       cache: 'no-store', // Don't cache to get fresh data
     })
 
@@ -112,7 +127,7 @@ export async function GET(request: NextRequest) {
       const tickers = data.map(s => s.ticker)
 
       // Fetch market data in parallel (optional)
-      const marketData = await fetchMarketData(tickers)
+      const marketData = await fetchMarketData(tickers, authHeader)
 
       // Enrich signals with market data
       const enrichedData = data.map((signal) => {
