@@ -27,13 +27,33 @@ interface PortfolioExposure {
   warnings: string[]
 }
 
+interface PortfolioRiskResponse {
+  total_risk_score: number
+  direct_risk: number
+  indirect_risk: number
+  ticker_contributions: {
+    ticker: string
+    weight: number
+    risk_score: number
+    contribution: number
+  }[]
+  shock_scenario?: {
+    shock_ticker: string
+    impacted_tickers: {
+      ticker: string
+      estimated_impact_pct: number
+    }[]
+  }
+  risk_source: string
+  explanation: string
+}
+
 export async function POST(request: NextRequest) {
-  // Forward Authorization header from client
   const authHeader = request.headers.get('Authorization')
 
   try {
     const body = await request.json()
-    const { tickers } = body
+    const { tickers, weights } = body
 
     if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
       return NextResponse.json(
@@ -42,30 +62,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build headers with auth forwarding
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (authHeader) {
       headers['Authorization'] = authHeader
     }
 
-    // Try backend first
+    // Build holdings with equal weights if not provided
+    const totalTickers = tickers.length
+    const holdings = tickers.map((ticker: string, idx: number) => ({
+      ticker,
+      weight: weights?.[idx] || 1.0 / totalTickers,
+    }))
+
+    // Try backend portfolio-risk endpoint
     try {
-      const response = await fetch(`${BACKEND_URL}/api/portfolio/exposure`, {
+      const response = await fetch(`${BACKEND_URL}/graph/portfolio-risk`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ tickers }),
+        body: JSON.stringify({ holdings }),
       })
 
       if (response.ok) {
-        const data = await response.json()
-        return NextResponse.json(data)
+        const data: PortfolioRiskResponse = await response.json()
+        return NextResponse.json(transformPortfolioRiskResponse(data, tickers))
       }
     } catch {
       // Backend not available
     }
 
-    // Generate mock exposure analysis
-    const result = generateMockExposure(tickers)
+    // Fallback to generated exposure analysis
+    const result = generateExposureAnalysis(tickers)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Portfolio exposure error:', error)
@@ -76,7 +102,44 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateMockExposure(tickers: string[]): PortfolioExposure {
+function transformPortfolioRiskResponse(data: PortfolioRiskResponse, tickers: string[]): PortfolioExposure {
+  const topExposures: ExposureNode[] = data.ticker_contributions.map((tc) => ({
+    ticker: tc.ticker,
+    name: tc.ticker,
+    directExposure: tc.weight * 100,
+    indirectExposure: tc.contribution * 100,
+    totalExposure: (tc.weight + tc.contribution) * 100,
+    pathCount: Math.ceil(tc.risk_score * 10),
+    riskLevel: getRiskLevel(tc.risk_score),
+  }))
+
+  const warnings: string[] = []
+  if (data.total_risk_score > 0.7) {
+    warnings.push('High overall portfolio risk detected')
+  }
+  if (data.indirect_risk > data.direct_risk) {
+    warnings.push('Significant indirect/hidden supply chain exposure')
+  }
+  warnings.push(data.explanation)
+
+  return {
+    totalIndirectExposure: data.indirect_risk * 100,
+    concentrationRisk: Math.round(data.total_risk_score * 100),
+    topExposures,
+    geographicBreakdown: [],
+    sectorBreakdown: [],
+    warnings,
+  }
+}
+
+function getRiskLevel(riskScore: number): 'low' | 'medium' | 'high' | 'critical' {
+  if (riskScore >= 0.8) return 'critical'
+  if (riskScore >= 0.6) return 'high'
+  if (riskScore >= 0.3) return 'medium'
+  return 'low'
+}
+
+function generateExposureAnalysis(tickers: string[]): PortfolioExposure {
   // Calculate mock exposures based on portfolio composition
   const hasSemiconductors = tickers.some((t) =>
     ['NVDA', 'AMD', 'INTC', 'TSM', 'QCOM', 'AVGO', 'MU'].includes(t)
