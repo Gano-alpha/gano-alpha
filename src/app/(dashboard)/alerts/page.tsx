@@ -1,378 +1,266 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Bell,
-  BellOff,
-  Check,
-  AlertTriangle,
-  ArrowRight,
-  Clock,
-  FileText,
-  TrendingDown,
-  TrendingUp,
-  Zap,
-  Settings,
-  Trash2,
-  ExternalLink,
-  Loader2,
-} from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { Bell, AlertTriangle, Zap, Check, Filter, Search, Clock, FileText, ExternalLink } from 'lucide-react'
 
-interface Alert {
+type AlertType = 'whisper' | 'signal' | 'exposure'
+type Severity = 'high' | 'medium' | 'low'
+
+interface AlertItem {
   id: string
-  type: 'whisper' | 'signal' | 'exposure'
-  severity: 'high' | 'medium' | 'low'
+  type: AlertType
+  severity: Severity
   title: string
   sourceTicker: string
-  sourceName: string
-  affectedTickers: string[]
+  affectedTickers?: string[]
   summary: string
-  extractedText: string
-  filingType: string
-  filingDate: string
-  filingUrl: string
+  filingType?: string
+  filingUrl?: string
   timestamp: string
-  read: boolean
+  read?: boolean
 }
 
-const alertFilters = ['All', 'Unread', 'Whispers', 'Signals', 'Exposure']
-
-function getRelativeTime(timestamp: string): string {
-  const now = new Date()
-  const then = new Date(timestamp)
-  const diffMs = now.getTime() - then.getTime()
-  const diffMins = Math.floor(diffMs / (1000 * 60))
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffHours / 24)
-
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays === 1) return '1d ago'
-  if (diffDays < 7) return `${diffDays}d ago`
-  return then.toLocaleDateString()
-}
+const mockAlerts: AlertItem[] = [
+  {
+    id: '1',
+    type: 'whisper',
+    severity: 'high',
+    title: 'Export control tightening for AI chips',
+    sourceTicker: 'NVDA',
+    affectedTickers: ['NVDA', 'TSM', 'ASML'],
+    summary: 'U.S. reportedly considering tighter export rules on AI accelerators.',
+    filingType: 'News',
+    filingUrl: '#',
+    timestamp: new Date().toISOString(),
+    read: false,
+  },
+  {
+    id: '2',
+    type: 'signal',
+    severity: 'medium',
+    title: 'Solvency trend deteriorating',
+    sourceTicker: 'QRVO',
+    summary: 'Altman Z trending down; CDS proxy elevated.',
+    filingType: 'Internal',
+    timestamp: new Date(Date.now() - 3600_000).toISOString(),
+    read: false,
+  },
+  {
+    id: '3',
+    type: 'exposure',
+    severity: 'low',
+    title: 'Region TW supply stress eased',
+    sourceTicker: 'TSM',
+    summary: 'Fab utilization stabilizing after prior disruption.',
+    filingType: 'Update',
+    timestamp: new Date(Date.now() - 24 * 3600_000).toISOString(),
+    read: true,
+  },
+]
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedFilter, setSelectedFilter] = useState('All')
-  const [selectedAlerts, setSelectedAlerts] = useState<string[]>([])
+  const [alerts, setAlerts] = useState<AlertItem[]>(mockAlerts)
+  const [filter, setFilter] = useState<'All' | AlertType | 'Unread'>('All')
+  const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    async function fetchAlerts() {
-      try {
-        const res = await fetch('/api/whispers?limit=20')
-        if (res.ok) {
-          const data = await res.json()
-          // Transform whisper data to alert format
-          const transformedAlerts: Alert[] = data.map((w: any) => ({
-            id: w.id,
-            type: 'whisper',
-            severity: w.severity || 'medium',
-            title: w.title,
-            sourceTicker: w.sourceTicker,
-            sourceName: w.sourceName,
-            affectedTickers: w.affectedTickers || [],
-            summary: w.summary,
-            extractedText: w.extractedText || '',
-            filingType: w.filingType || '',
-            filingDate: w.filingDate || '',
-            filingUrl: w.filingUrl || '',
-            timestamp: w.timestamp,
-            read: w.read || false,
-          }))
-          setAlerts(transformedAlerts)
-        }
-      } catch (error) {
-        console.error('Error fetching alerts:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAlerts()
-  }, [])
-
-  const filteredAlerts = alerts.filter((alert) => {
-    if (selectedFilter === 'All') return true
-    if (selectedFilter === 'Unread') return !alert.read
-    if (selectedFilter === 'Whispers') return alert.type === 'whisper'
-    if (selectedFilter === 'Signals') return alert.type === 'signal'
-    if (selectedFilter === 'Exposure') return alert.type === 'exposure'
-    return true
-  })
+  const filtered = useMemo(() => {
+    return alerts.filter((a) => {
+      const matchesType = filter === 'All' || (filter === 'Unread' ? !a.read : a.type === filter)
+      const matchesSearch =
+        !search ||
+        a.title.toLowerCase().includes(search.toLowerCase()) ||
+        a.sourceTicker.toLowerCase().includes(search.toLowerCase())
+      return matchesType && matchesSearch
+    })
+  }, [alerts, filter, search])
 
   const unreadCount = alerts.filter((a) => !a.read).length
-  const highPriorityCount = alerts.filter((a) => a.severity === 'high' && !a.read).length
+  const highCount = alerts.filter((a) => a.severity === 'high').length
 
-  const toggleSelectAlert = (id: string) => {
-    setSelectedAlerts((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
-    )
-  }
-
-  const markAsRead = (ids: string[]) => {
+  const markRead = (id?: string) => {
     setAlerts((prev) =>
-      prev.map((a) => (ids.includes(a.id) ? { ...a, read: true } : a))
+      prev.map((a) => (id ? (a.id === id ? { ...a, read: true } : a) : { ...a, read: true }))
     )
-    setSelectedAlerts([])
   }
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high':
-        return 'text-sell bg-sell/10 border-sell/20'
-      case 'medium':
-        return 'text-warning bg-warning/10 border-warning/20'
-      case 'low':
-        return 'text-buy bg-buy/10 border-buy/20'
-      default:
-        return 'text-secondary bg-slate-100 border-slate-200'
-    }
+  const severityBadge = (s: Severity) => {
+    const tone = s === 'high' ? 'danger' : s === 'medium' ? 'warning' : 'success'
+    return <Badge variant={tone}>{s}</Badge>
   }
 
-  const getAlertIcon = (type: string, severity: string) => {
-    switch (type) {
+  const typeBadge = (t: AlertType) => {
+    switch (t) {
       case 'whisper':
-        return <Zap className={`w-5 h-5 ${severity === 'high' ? 'text-sell' : severity === 'medium' ? 'text-warning' : 'text-buy'}`} />
+        return <Badge variant="secondary">Whisper</Badge>
       case 'signal':
-        return severity === 'high' ? <TrendingDown className="w-5 h-5 text-sell" /> : <TrendingUp className="w-5 h-5 text-buy" />
+        return <Badge variant="outline">Signal</Badge>
       case 'exposure':
-        return <AlertTriangle className="w-5 h-5 text-warning" />
+        return <Badge variant="secondary">Exposure</Badge>
       default:
-        return <Bell className="w-5 h-5 text-secondary" />
+        return null
     }
+  }
+
+  const timeAgo = (ts: string) => {
+    const diff = Date.now() - new Date(ts).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
   }
 
   return (
     <div className="min-h-screen">
-      <Header
-        title="Alerts"
-        subtitle="Market whispers and signal changes"
-      />
+      <Header title="Alerts" subtitle="Whispers, signals, and exposure warnings" />
 
       <div className="p-6 space-y-6">
-        {/* Stats Row */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-5">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-secondary">Unread Alerts</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">{unreadCount}</p>
+                  <p className="text-sm text-slate-500">Unread</p>
+                  <p className="text-2xl font-semibold text-slate-900">{unreadCount}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-indigo-50">
+                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
                   <Bell className="w-5 h-5 text-indigo-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-5">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-secondary">High Priority</p>
-                  <p className="text-2xl font-semibold text-sell mt-1">{highPriorityCount}</p>
+                  <p className="text-sm text-slate-500">High Priority</p>
+                  <p className="text-2xl font-semibold text-rose-600">{highCount}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-sell/10">
-                  <AlertTriangle className="w-5 h-5 text-sell" />
+                <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-5">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-secondary">Whispers Today</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">
-                    {alerts.filter((a) => a.type === 'whisper').length}
-                  </p>
+                  <p className="text-sm text-slate-500">Whispers</p>
+                  <p className="text-2xl font-semibold text-slate-900">{alerts.filter(a => a.type === 'whisper').length}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-warning/10">
-                  <Zap className="w-5 h-5 text-warning" />
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-amber-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-5">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-secondary">Total Alerts</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">{alerts.length}</p>
+                  <p className="text-sm text-slate-500">Total</p>
+                  <p className="text-2xl font-semibold text-slate-900">{alerts.length}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-teal-50">
-                  <Settings className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <Filter className="w-5 h-5 text-slate-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters and Actions */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            {alertFilters.map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setSelectedFilter(filter)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                  selectedFilter === filter
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-100 text-secondary hover:bg-slate-200'
-                }`}
-              >
-                {filter}
-                {filter === 'Unread' && unreadCount > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-sell text-white rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedAlerts.length > 0 && (
-              <>
-                <Button variant="outline" size="sm" onClick={() => markAsRead(selectedAlerts)}>
-                  <Check className="w-4 h-4 mr-1" />
-                  Mark Read ({selectedAlerts.length})
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-4 flex flex-col md:flex-row gap-3 md:items-center">
+            <div className="flex items-center gap-2 flex-wrap">
+              {['All', 'Unread', 'whisper', 'signal', 'exposure'].map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter(f as any)}
+                >
+                  {f === 'whisper' ? 'Whispers' : f === 'signal' ? 'Signals' : f === 'exposure' ? 'Exposure' : f}
+                  {f === 'Unread' && unreadCount > 0 && <Badge className="ml-2" variant="secondary">{unreadCount}</Badge>}
                 </Button>
-                <Button variant="outline" size="sm" className="text-sell hover:text-sell">
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Delete
-                </Button>
-              </>
-            )}
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-1" />
-              Configure
-            </Button>
-          </div>
-        </div>
+              ))}
+            </div>
+            <div className="flex-1" />
+            <div className="min-w-[240px]">
+              <Input
+                placeholder="Search title or ticker"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                icon={<Search className="w-4 h-4 text-slate-400" />}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Alerts List */}
-        <div className="space-y-4">
-          {loading ? (
+        {/* List */}
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
-                <p className="text-secondary">Loading alerts...</p>
-              </CardContent>
-            </Card>
-          ) : filteredAlerts.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <BellOff className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-primary">No alerts found</h3>
-                <p className="text-secondary mt-1">
-                  {selectedFilter === 'Unread'
-                    ? "You're all caught up!"
-                    : 'No alerts match your current filter.'}
-                </p>
-              </CardContent>
+              <CardContent className="p-8 text-center text-slate-500">No alerts match.</CardContent>
             </Card>
           ) : (
-            filteredAlerts.map((alert) => (
-              <Card
-                key={alert.id}
-                className={`transition-all ${
-                  !alert.read ? 'border-l-4 border-l-indigo-500' : ''
-                } ${selectedAlerts.includes(alert.id) ? 'ring-2 ring-indigo-500' : ''}`}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-4">
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleSelectAlert(alert.id)}
-                      className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        selectedAlerts.includes(alert.id)
-                          ? 'bg-indigo-500 border-indigo-500'
-                          : 'border-slate-300 hover:border-indigo-400'
-                      }`}
-                    >
-                      {selectedAlerts.includes(alert.id) && (
-                        <Check className="w-3 h-3 text-white" />
-                      )}
-                    </button>
-
-                    {/* Icon */}
-                    <div className={`p-2 rounded-lg ${getSeverityColor(alert.severity)}`}>
-                      {getAlertIcon(alert.type, alert.severity)}
+            filtered.map((a) => (
+              <Card key={a.id} className={cn('border border-slate-200 transition', !a.read && 'border-l-4 border-l-indigo-500')}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className={cn('p-2 rounded-lg border',
+                      a.severity === 'high' ? 'border-rose-200 bg-rose-50' :
+                      a.severity === 'medium' ? 'border-amber-200 bg-amber-50' :
+                      'border-emerald-200 bg-emerald-50'
+                    )}>
+                      {a.type === 'whisper' ? <Zap className="w-5 h-5 text-amber-600" /> :
+                       a.type === 'signal' ? <Bell className="w-5 h-5 text-indigo-600" /> :
+                       <AlertTriangle className="w-5 h-5 text-rose-600" />}
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className={`font-semibold ${!alert.read ? 'text-primary' : 'text-secondary'}`}>
-                              {alert.title}
-                            </h3>
-                            <Badge
-                              variant={
-                                alert.severity === 'high' ? 'danger' :
-                                alert.severity === 'medium' ? 'warning' : 'success'
-                              }
-                            >
-                              {alert.severity}
-                            </Badge>
-                            {alert.filingType && (
-                              <Badge variant="secondary">
-                                <FileText className="w-3 h-3 mr-1" />
-                                {alert.filingType}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {alert.sourceTicker && (
-                            <div className="flex items-center gap-2 mt-1 text-sm">
-                              <span className="font-medium text-indigo-600">{alert.sourceTicker}</span>
-                              <span className="text-muted">{alert.sourceName}</span>
-                              {alert.affectedTickers.length > 0 && (
-                                <>
-                                  <ArrowRight className="w-3 h-3 text-muted" />
-                                  <span className="text-secondary">
-                                    Affects: {alert.affectedTickers.join(', ')}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          )}
-
-                          <p className="text-sm text-secondary mt-2">{alert.summary}</p>
-
-                          {alert.extractedText && (
-                            <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                              <p className="text-xs text-muted mb-1">Extracted from filing:</p>
-                              <p className="text-sm text-secondary italic">&quot;{alert.extractedText}&quot;</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="text-xs text-muted whitespace-nowrap flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {getRelativeTime(alert.timestamp)}
-                          </span>
-                          {alert.filingUrl && (
-                            <a href={alert.filingUrl} target="_blank" rel="noopener noreferrer">
-                              <Button variant="ghost" size="sm">
-                                <ExternalLink className="w-4 h-4" />
-                              </Button>
-                            </a>
-                          )}
-                        </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className={cn('font-semibold', a.read ? 'text-slate-700' : 'text-slate-900')}>{a.title}</h3>
+                        {severityBadge(a.severity)}
+                        {typeBadge(a.type)}
+                        {a.filingType && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <FileText className="w-3 h-3" /> {a.filingType}
+                          </Badge>
+                        )}
                       </div>
+                      <div className="text-sm text-slate-600 flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-indigo-600">{a.sourceTicker}</span>
+                        {a.affectedTickers && a.affectedTickers.length > 0 && (
+                          <span className="text-slate-500">→ {a.affectedTickers.join(', ')}</span>
+                        )}
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {timeAgo(a.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 line-clamp-2">{a.summary}</p>
+                      {a.filingUrl && (
+                        <a href={a.filingUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 inline-flex items-center gap-1">
+                          View source <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      {!a.read && (
+                        <Button variant="outline" size="sm" onClick={() => markRead(a.id)}>
+                          <Check className="w-4 h-4 mr-1" /> Mark read
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

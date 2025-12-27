@@ -1,400 +1,258 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Zap,
-  Play,
-  AlertTriangle,
-  TrendingDown,
-  TrendingUp,
-  Loader2,
-  ChevronRight,
-  BarChart3,
-  Shield,
-  Target,
-  History,
-  Sparkles,
-} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Zap, Play, Loader2, SlidersHorizontal, Plus, X, Target, Activity, Shield, BarChart3 } from 'lucide-react'
 
-interface AffectedStock {
+type Domain = 'MACRO' | 'REGION' | 'REG' | 'THEME'
+
+interface Shock {
+  id: string
+  label: string
+  domain: Domain
+  value: number // percentage / bps
+  active: boolean
+  description?: string
+}
+
+interface ImpactRow {
   ticker: string
   name: string
-  impact: number
-  exposure: 'Direct' | 'Indirect'
-  reason: string
-  pathLength: number
+  score: number
+  domainBreakdown: { domain: Domain; value: number }[]
 }
 
-interface SimulationResult {
-  summary: {
-    totalImpact: number
-    affectedStocks: number
-    criticalNodes: number
-    recoveryTime: string
-  }
-  affectedStocks: AffectedStock[]
-  propagationPaths: {
-    from: string
-    to: string
-    strength: number
-  }[]
-  mitigations: string[]
-}
-
-// Example scenario prompts to help users understand the format
-const examplePrompts = [
-  'TSM supply chain disruption due to Taiwan crisis',
-  'NVDA and AMD affected by semiconductor shortage',
-  'AAPL production delays from supplier issues',
+const presetShocks: Shock[] = [
+  { id: 'rates', label: 'Rates (^TNX)', domain: 'MACRO', value: 20, active: true, description: '+20 bps' },
+  { id: 'oil', label: 'Oil (CL)', domain: 'MACRO', value: -5, active: false, description: '-5%' },
+  { id: 'tw', label: 'Region: TW Supply', domain: 'REGION', value: -30, active: true, description: '-30% supply' },
+  { id: 'export', label: 'Export Control', domain: 'REG', value: 1, active: true, description: 'Chips/EDA' },
 ]
 
-// Past simulations storage key
-const SIMULATION_HISTORY_KEY = 'gano_simulation_history'
-
-interface SimulationHistoryItem {
-  id: string
-  title: string
-  date: string
-  portfolioImpact: number
-  affectedCount: number
-}
+const mockImpacts: ImpactRow[] = [
+  { ticker: 'TSM', name: 'TSMC', score: 12.4, domainBreakdown: [{ domain: 'MACRO', value: 4 }, { domain: 'REGION', value: 6 }, { domain: 'REG', value: 2.4 }] },
+  { ticker: 'NVDA', name: 'NVIDIA', score: 9.1, domainBreakdown: [{ domain: 'MACRO', value: 3.9 }, { domain: 'REGION', value: 3.0 }, { domain: 'REG', value: 2.2 }] },
+  { ticker: 'AAPL', name: 'Apple', score: 7.3, domainBreakdown: [{ domain: 'MACRO', value: 2.5 }, { domain: 'REGION', value: 3.0 }, { domain: 'REG', value: 1.8 }] },
+]
 
 export default function SimulationPage() {
-  const [scenarioInput, setScenarioInput] = useState('')
-  const [isSimulating, setIsSimulating] = useState(false)
-  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
-  const [simulationHistory, setSimulationHistory] = useState<SimulationHistoryItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(SIMULATION_HISTORY_KEY)
-      if (stored) {
-        try {
-          return JSON.parse(stored)
-        } catch {
-          return []
-        }
-      }
-    }
-    return []
-  })
+  const [scenarioText, setScenarioText] = useState('')
+  const [shocks, setShocks] = useState<Shock[]>(presetShocks)
+  const [impacts, setImpacts] = useState<ImpactRow[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const activeShocks = useMemo(() => shocks.filter(s => s.active), [shocks])
+
+  const toggleShock = (id: string) => {
+    setShocks(prev => prev.map(s => (s.id === id ? { ...s, active: !s.active } : s)))
+  }
+
+  const updateShockValue = (id: string, value: number) => {
+    setShocks(prev => prev.map(s => (s.id === id ? { ...s, value } : s)))
+  }
 
   const runSimulation = async () => {
-    if (!scenarioInput.trim()) return
-
-    setIsSimulating(true)
-    setSimulationResult(null)
-
+    setLoading(true)
     try {
-      const response = await fetch('/api/simulation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          scenario: scenarioInput,
-        }),
-      })
-
-      if (response.ok) {
-        const result: SimulationResult = await response.json()
-        setSimulationResult(result)
-
-        // Save to history
-        const historyItem: SimulationHistoryItem = {
-          id: Date.now().toString(),
-          title: scenarioInput.slice(0, 50) + (scenarioInput.length > 50 ? '...' : ''),
-          date: new Date().toISOString().split('T')[0],
-          portfolioImpact: result.summary.totalImpact,
-          affectedCount: result.summary.affectedStocks,
-        }
-        const newHistory = [historyItem, ...simulationHistory].slice(0, 10)
-        setSimulationHistory(newHistory)
-        localStorage.setItem(SIMULATION_HISTORY_KEY, JSON.stringify(newHistory))
-      }
-    } catch (error) {
-      console.error('Simulation error:', error)
+      // TODO: replace with real API call to /api/simulate
+      await new Promise(res => setTimeout(res, 800))
+      setImpacts(mockImpacts)
     } finally {
-      setIsSimulating(false)
+      setLoading(false)
     }
   }
 
-  const loadHistoryItem = (item: SimulationHistoryItem) => {
-    setScenarioInput(item.title)
+  const domainColor = (d: Domain) => {
+    switch (d) {
+      case 'MACRO': return 'bg-indigo-500'
+      case 'REGION': return 'bg-blue-500'
+      case 'REG': return 'bg-amber-500'
+      case 'THEME': return 'bg-emerald-500'
+      default: return 'bg-slate-400'
+    }
   }
 
-  const handleExamplePrompt = (prompt: string) => {
-    setScenarioInput(prompt)
+  const domainLabel = (d: Domain) => {
+    switch (d) {
+      case 'MACRO': return 'Macro'
+      case 'REGION': return 'Region'
+      case 'REG': return 'Regulation'
+      case 'THEME': return 'Theme'
+      default: return d
+    }
   }
 
   return (
     <div className="min-h-screen">
-      <Header
-        title="War Room"
-        subtitle="Simulate macro shocks and stress-test your portfolio"
-      />
+      <Header title="Scenarios" subtitle="Compose shocks and see who moves." />
 
       <div className="p-6 space-y-6">
-        {/* Scenario Input Section */}
+        {/* Scenario entry */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-500" />
-              Scenario Builder
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-primary mb-2 block">
-                Describe a scenario with ticker symbols (e.g., NVDA, TSM, AAPL)
-              </label>
-              <div className="flex gap-3">
-                <Input
-                  value={scenarioInput}
-                  onChange={(e) => setScenarioInput(e.target.value)}
-                  placeholder="e.g., 'TSM supply chain disruption affecting NVDA and AMD'"
-                  className="flex-1"
-                />
-                <Button
-                  onClick={runSimulation}
-                  disabled={isSimulating || !scenarioInput.trim()}
-                >
-                  {isSimulating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Simulating...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Run Simulation
-                    </>
-                  )}
-                </Button>
-              </div>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Zap className="w-4 h-4 text-slate-900" />
+              Paste a headline or tweak shocks below.
             </div>
-
-            {/* Example prompts */}
-            <div>
-              <p className="text-sm text-secondary mb-2">Try an example:</p>
-              <div className="flex flex-wrap gap-2">
-                {examplePrompts.map((prompt, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleExamplePrompt(prompt)}
-                    className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-secondary rounded-full transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+            <div className="flex flex-col md:flex-row gap-3">
+              <Input
+                placeholder="TSM supply chain disruption due to Taiwan crisis"
+                value={scenarioText}
+                onChange={(e) => setScenarioText(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={runSimulation} disabled={loading} className="md:w-40">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                {loading ? 'Running' : 'Run'}
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Simulation Running State */}
-        {isSimulating && (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <div className="relative mx-auto w-16 h-16 mb-4">
-                <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
-                <div className="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                <Zap className="absolute inset-0 m-auto w-6 h-6 text-indigo-500" />
-              </div>
-              <h3 className="text-lg font-semibold text-primary">Analyzing Shock Propagation</h3>
-              <p className="text-secondary mt-1">
-                Mapping supply chain dependencies and calculating portfolio impact...
-              </p>
-              <div className="flex justify-center gap-6 mt-6 text-sm text-muted">
-                <span>Scanning supply chains</span>
-                <span>•</span>
-                <span>Analyzing impacts</span>
-                <span>•</span>
-                <span>Generating mitigations</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Simulation Results */}
-        {simulationResult && !isSimulating && (
-          <>
-            {/* Impact Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-secondary">Affected Stocks</p>
-                      <p className="text-2xl font-semibold text-primary mt-1">
-                        {simulationResult.summary.affectedStocks}
-                      </p>
+        {/* Shock deck */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+              Shocks
+            </CardTitle>
+            <Button variant="ghost" size="sm">
+              <Plus className="w-4 h-4 mr-1" /> Add shock
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {shocks.map((s) => (
+              <div key={s.id} className={cn("flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg border",
+                s.active ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-white opacity-70')}>
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => toggleShock(s.id)}
+                    className={cn("w-10 h-10 rounded-full border flex items-center justify-center text-sm font-semibold",
+                      s.active ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-400')}
+                  >
+                    {s.value > 0 ? '+' : ''}{s.value}
+                  </button>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-slate-900">{s.label}</p>
+                      <Badge variant="secondary">{domainLabel(s.domain)}</Badge>
                     </div>
-                    <div className="p-2 rounded-lg bg-warning/10">
-                      <Target className="w-5 h-5 text-warning" />
-                    </div>
+                    {s.description && <p className="text-xs text-slate-500">{s.description}</p>}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-secondary">Directly Impacted</p>
-                      <p className="text-2xl font-semibold text-sell mt-1">
-                        {simulationResult.summary.criticalNodes}
-                      </p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-sell/10">
-                      <AlertTriangle className="w-5 h-5 text-sell" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-secondary">Est. Recovery</p>
-                      <p className="text-2xl font-semibold text-primary mt-1">
-                        {simulationResult.summary.recoveryTime}
-                      </p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-buy/10">
-                      <TrendingUp className="w-5 h-5 text-buy" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Affected Stocks Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-indigo-500" />
-                  Supply Chain Impact Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Stock</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Est. Price Impact</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Exposure Type</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Supply Chain Distance</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-secondary">Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {simulationResult.affectedStocks.map((stock) => (
-                        <tr key={stock.ticker} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-3 px-4">
-                            <div>
-                              <p className="font-semibold text-primary">{stock.ticker}</p>
-                              <p className="text-xs text-muted">{stock.name}</p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="font-semibold text-sell">{stock.impact}%</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge variant={stock.exposure === 'Direct' ? 'danger' : 'warning'}>
-                              {stock.exposure}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-sm text-secondary">
-                              {stock.pathLength} hop{stock.pathLength > 1 ? 's' : ''}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <p className="text-sm text-secondary max-w-xs">{stock.reason}</p>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Mitigations */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-buy" />
-                  Recommended Mitigations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {simulationResult.mitigations.map((mitigation, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 p-3 bg-buy/5 rounded-lg border border-buy/20"
-                    >
-                      <ChevronRight className="w-4 h-4 text-buy mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-primary">{mitigation}</p>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={-50}
+                    max={50}
+                    step={1}
+                    value={s.value}
+                    onChange={(e) => updateShockValue(s.id, Number(e.target.value))}
+                    className="w-40"
+                  />
+                  <span className="text-sm text-slate-600 w-12 text-right">{s.value}</span>
+                  <Button variant="ghost" size="icon" onClick={() => toggleShock(s.id)}>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-        {/* Past Simulations */}
-        {!simulationResult && !isSimulating && (
+        {/* Results */}
+        <Card>
+          <CardHeader className="pb-2 flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Target className="w-4 h-4 text-indigo-600" />
+              Top impacted tickers
+            </CardTitle>
+            {loading && <Badge variant="secondary" className="text-xs">Running…</Badge>}
+            {!loading && impacts && <Badge variant="outline" className="text-xs">{activeShocks.length} shocks applied</Badge>}
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-12 text-slate-500">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Calculating impact…
+              </div>
+            ) : !impacts ? (
+              <div className="text-sm text-slate-500 py-4">
+                Configure shocks and click Run to see impacted names.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {impacts.map((row) => {
+                  const total = row.domainBreakdown.reduce((acc, d) => acc + d.value, 0) || 1
+                  return (
+                    <div key={row.ticker} className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-slate-900">{row.ticker}</p>
+                            <span className="text-sm text-slate-500">{row.name}</span>
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1">Impact score {row.score.toFixed(1)}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Activity className="w-4 h-4 mr-1" /> Open graph
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Shield className="w-4 h-4 mr-1" /> Hedge ideas
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-3 h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                        {row.domainBreakdown.map((d) => (
+                          <div
+                            key={d.domain}
+                            className={cn(domainColor(d.domain))}
+                            style={{ width: `${(d.value / total) * 100}%` }}
+                            title={`${domainLabel(d.domain)}: ${d.value.toFixed(1)}`}
+                          />
+                        ))}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                        {row.domainBreakdown.map((d) => (
+                          <Badge key={d.domain} variant="secondary">
+                            {domainLabel(d.domain)} {d.value.toFixed(1)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Mini summary */}
+        {impacts && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5 text-secondary" />
-                Recent Simulations
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+                Domain contribution
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {simulationHistory.length > 0 ? (
-                <div className="space-y-3">
-                  {simulationHistory.map((sim) => (
-                    <div
-                      key={sim.id}
-                      onClick={() => loadHistoryItem(sim)}
-                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-indigo-50">
-                          <Zap className="w-4 h-4 text-indigo-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-primary">{sim.title}</p>
-                          <p className="text-xs text-muted">{sim.date}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-primary">{sim.affectedCount}</p>
-                          <p className="text-xs text-muted">stocks</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-primary">No simulations yet</h3>
-                  <p className="text-secondary mt-1">
-                    Run your first scenario to see how macro events affect your portfolio.
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(['MACRO', 'REGION', 'REG', 'THEME'] as Domain[]).map((d) => (
+                <div key={d} className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                  <p className="text-xs text-slate-500">{domainLabel(d)}</p>
+                  <p className="text-xl font-semibold text-slate-900">
+                    {impacts
+                      .map((i) => i.domainBreakdown.find((x) => x.domain === d)?.value || 0)
+                      .reduce((a, b) => a + b, 0)
+                      .toFixed(1)}
                   </p>
                 </div>
-              )}
+              ))}
             </CardContent>
           </Card>
         )}

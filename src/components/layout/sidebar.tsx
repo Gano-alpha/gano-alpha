@@ -22,28 +22,28 @@ interface SidebarProps {
 
 const navigation = [
   {
-    name: 'Home',
+    name: 'Brief',
     href: '/home',
     icon: Home,
-    description: 'Your morning brief',
+    description: 'Today’s risk field',
   },
   {
-    name: 'Market',
+    name: 'Signals',
     href: '/market',
     icon: TrendingUp,
-    description: 'Find opportunities',
+    description: 'Actionable calls',
   },
   {
-    name: 'Alerts',
-    href: '/alerts',
+    name: 'Scenarios',
+    href: '/simulation',
     icon: Bell,
-    description: 'Supply chain news',
+    description: 'News → shock → impact',
   },
   {
     name: 'Watchlist',
     href: '/portfolio',
     icon: Eye,
-    description: 'Track your stocks',
+    description: 'Track & posture',
   },
 ]
 
