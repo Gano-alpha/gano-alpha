@@ -1,61 +1,101 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Lock, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Check } from 'lucide-react'
 
-export default function SignupPage() {
+export default function EarlyAccessPage() {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      // For now, just simulate success
+      // TODO: Connect to actual waitlist endpoint (e.g., /api/waitlist)
+      await new Promise(resolve => setTimeout(resolve, 800))
+      setSubmitted(true)
+    } catch (err) {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="space-y-6 text-center">
+        <div className="w-12 h-12 bg-teal/10 rounded-full flex items-center justify-center mx-auto">
+          <Check className="w-6 h-6 text-teal" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold text-primary">You&apos;re on the list</h1>
+          <p className="text-secondary text-sm">
+            We&apos;ll reach out when your access is ready.
+          </p>
+        </div>
+        <div className="pt-4">
+          <Link
+            href="/"
+            className="text-sm text-accent hover:underline font-medium"
+          >
+            Back to home
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Mobile logo */}
-      <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500 flex items-center justify-center">
-          <span className="text-white font-bold text-lg">G</span>
-        </div>
-        <span className="text-primary text-xl font-semibold">Gano Alpha</span>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold text-primary">Request early access</h1>
+        <p className="text-secondary text-sm">
+          GanoAlpha is currently in private beta. Join the waitlist.
+        </p>
       </div>
 
-      {/* Header */}
-      <div className="space-y-2 text-center lg:text-left">
-        <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
-          <div className="p-3 rounded-full bg-warning/10">
-            <Lock className="h-6 w-6 text-warning" />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm">
+            {error}
           </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="text-sm text-secondary">Email</label>
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-background border border-border text-primary px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm placeholder:text-muted transition-all"
+            required
+          />
         </div>
-        <h1 className="text-2xl font-bold text-primary">Signups Closed</h1>
-        <p className="text-secondary">
-          Access to Gano Alpha is currently invite-only. We&apos;re in private beta.
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-accent hover:bg-accent/90 text-white font-medium h-12 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Submitting...' : 'Join waitlist'}
+        </button>
+      </form>
+
+      <div className="text-center pt-2">
+        <p className="text-sm text-secondary">
+          Already have access?{' '}
+          <Link href="/login" className="text-accent hover:underline font-medium">
+            Sign in
+          </Link>
         </p>
       </div>
-
-      {/* Info box */}
-      <div className="p-4 rounded-lg bg-surface border border-slate-200 space-y-3">
-        <p className="text-sm text-secondary">
-          If you&apos;ve been given access credentials, please use the login page to sign in.
-        </p>
-        <p className="text-sm text-secondary">
-          For access requests, please contact{' '}
-          <a href="mailto:rahul@ganoalpha.com" className="text-indigo-600 hover:underline">
-            rahul@ganoalpha.com
-          </a>
-        </p>
-      </div>
-
-      {/* Login button */}
-      <Button asChild className="w-full" size="lg">
-        <Link href="/login">
-          Go to Login
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Link>
-      </Button>
-
-      {/* Back link */}
-      <p className="text-center text-sm text-secondary">
-        Already have credentials?{' '}
-        <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-700">
-          Sign in here
-        </Link>
-      </p>
     </div>
   )
 }
