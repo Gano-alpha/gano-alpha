@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Send, Loader2, ArrowLeft, Menu } from "lucide-react";
 import { ThreadList, type Thread } from "@/components/chat/ThreadList";
 import { ContextPanel } from "@/components/chat/ContextPanel";
@@ -128,7 +128,7 @@ export default function ChatPage() {
   const [messageStore, setMessageStore] = useState<Record<string, Message[]>>({});
 
   // Current thread messages (derived from store)
-  const messages = messageStore[activeThreadId] || [];
+  const messages = useMemo(() => messageStore[activeThreadId] || [], [messageStore, activeThreadId]);
   const setMessages = useCallback((updater: Message[] | ((prev: Message[]) => Message[])) => {
     setMessageStore((store) => {
       const currentMessages = store[activeThreadId] || [];
@@ -280,7 +280,7 @@ export default function ChatPage() {
     setMessages([]);
     setShowMobileSidebar(false);
     inputRef.current?.focus();
-  }, []);
+  }, [setMessages]);
 
   const handleSelectThread = useCallback((threadId: string) => {
     setActiveThreadId(threadId);
@@ -465,7 +465,7 @@ export default function ChatPage() {
 
       setIsLoading(false);
     },
-    [input, isLoading, messages.length, activeThreadId, getAccessToken]
+    [input, isLoading, messages.length, activeThreadId, getAccessToken, setMessages]
   );
 
   // =============================================================================
@@ -1030,7 +1030,7 @@ export default function ChatPage() {
                 </button>
               </div>
               <p className="text-xs text-muted text-center mt-3">
-                Ranked answers. Evidence attached. Powered by GANO's proprietary models.
+                Ranked answers. Evidence attached. Powered by GANO&apos;s proprietary models.
               </p>
             </form>
 
