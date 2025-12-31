@@ -4,3 +4,4 @@ export { SplitCompareBlock } from './SplitCompareBlock';
 export { EvidenceBlock } from './EvidenceBlock';
 export { TickerDeepDiveBlock } from './TickerDeepDiveBlock';
 export { ModelTrustBlock } from './ModelTrustBlock';
+export { BlockRenderer } from './BlockRenderer';

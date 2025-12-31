@@ -209,9 +209,18 @@ export interface ChatQueryResponse {
   tool_results: ToolResult[];
   // Legacy field - deprecated
   ui_hint?: 'ranked_list' | 'split_compare' | 'ticker_deep_dive' | 'evidence' | 'model_trust' | 'narrative' | null;
-  // New pre-formatted UI response from server
+  // Legacy pre-formatted UI response (backward compatible)
   ui_type?: 'narrative' | 'ranked_list' | 'split_compare' | 'ticker_deep_dive' | 'evidence' | 'scenario_impact' | 'model_trust';
   ui_data?: Record<string, unknown>;
+  // NEW: Render blocks format (preferred - server emits directly)
+  blocks?: import('@/types/render-blocks').RenderBlock[];
+  _debug?: {
+    tool_trace: Array<{ tool: string; arguments: Record<string, unknown>; timing_ms?: number }>;
+    raw_tool_outputs: Record<string, unknown>;
+    tool_results?: ToolResult[];
+    message_id?: string;
+    created_at?: string;
+  };
   error?: string;
 }
 

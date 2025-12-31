@@ -5,7 +5,7 @@ import { Send, Loader2, ArrowLeft, Menu } from "lucide-react";
 import { ThreadList, type Thread } from "@/components/chat/ThreadList";
 import { ContextPanel } from "@/components/chat/ContextPanel";
 import { AssistantMessage } from "@/components/chat/AssistantMessage";
-import { TickerDeepDiveBlock } from "@/components/blocks";
+import { TickerDeepDiveBlock, BlockRenderer } from "@/components/blocks";
 import { generateThreadTitle, getThreadChips, type ThreadChipType } from "@/lib/block-state";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -19,6 +19,7 @@ import {
   type ToolResult,
   type ChatQueryResponse,
 } from "@/lib/api";
+import type { RenderBlock } from "@/types/render-blocks";
 
 // =============================================================================
 // Types
@@ -31,6 +32,7 @@ interface Message {
   timestamp: string;
   isLoading?: boolean;
   structuredResponse?: StructuredResponse;
+  blocks?: RenderBlock[];  // NEW: Server-emitted render blocks (preferred format)
   toolType?: string;
   processingTime?: number;
 }
@@ -376,8 +378,35 @@ export default function ChatPage() {
           );
         }
 
-        if (!data.error && data.ui_type && data.ui_data) {
-          // Server returns pre-formatted UI response - just map to frontend types
+        // NEW: Check for render blocks format first (preferred)
+        if (!data.error && data.blocks && data.blocks.length > 0) {
+          // Server returns render blocks directly - use BlockRenderer
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    isLoading: false,
+                    blocks: data.blocks,
+                    toolType,
+                    processingTime,
+                  }
+                : m
+            )
+          );
+
+          // Update thread confidence (extract from first narrative block or default)
+          const narrativeBlock = data.blocks.find((b) => b.type === "narrative");
+          const confidence = narrativeBlock?.meta?.confidence ?? 0.75;
+          setThreads((prev) =>
+            prev.map((t) =>
+              t.id === activeThreadId
+                ? { ...t, confidence: Number(confidence) }
+                : t
+            )
+          );
+        } else if (!data.error && data.ui_type && data.ui_data) {
+          // Legacy: Server returns pre-formatted UI response - map to frontend types
           const structuredResponse = mapServerUIToFrontend(data.ui_type, data.ui_data);
 
           setMessages((prev) =>
@@ -1038,8 +1067,21 @@ export default function ChatPage() {
                         <Loader2 size={18} className="animate-spin text-accent" />
                         <span className="text-sm text-secondary">Analyzing...</span>
                       </div>
+                    ) : msg.blocks && msg.blocks.length > 0 ? (
+                      /* NEW: Render blocks format (preferred) */
+                      <div className="py-4">
+                        {msg.toolType && (
+                          <div className="text-xs text-muted mb-2">
+                            {msg.toolType} {msg.processingTime && `· ${msg.processingTime}s`}
+                          </div>
+                        )}
+                        <BlockRenderer
+                          blocks={msg.blocks}
+                          onTickerClick={handleTickerClick}
+                        />
+                      </div>
                     ) : msg.structuredResponse ? (
-                      /* Assistant Response - Using AssistantMessage component */
+                      /* Legacy: Assistant Response - Using AssistantMessage component */
                       <AssistantMessage
                         messageId={msg.id}
                         response={msg.structuredResponse}
@@ -1126,11 +1168,10 @@ export default function ChatPage() {
             <div className="p-6">
               <TickerDeepDiveBlock
                 ticker={deepDiveTicker}
-                signals={{
-                  ogSignal: { direction: "long", conviction: 0.72 },
-                  sniperSignal: { direction: "long", conviction: 0.85 },
-                  consensus: "Both models bullish",
-                }}
+                signals={[
+                  { model: "OG", direction: "long", conviction: 0.72, headline: `${deepDiveTicker} long signal` },
+                  { model: "Sniper", direction: "long", conviction: 0.85, headline: `${deepDiveTicker} long signal` },
+                ]}
                 onClose={() => setDeepDiveTicker(null)}
               />
             </div>
