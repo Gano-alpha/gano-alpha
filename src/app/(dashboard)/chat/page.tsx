@@ -5,19 +5,19 @@ import { Send, Loader2, ArrowLeft, Menu } from "lucide-react";
 import { ThreadList, type Thread } from "@/components/chat/ThreadList";
 import { ContextPanel } from "@/components/chat/ContextPanel";
 import { AssistantMessage } from "@/components/chat/AssistantMessage";
+import { MCPToolAnimation } from "@/components/chat/MCPToolAnimation";
 import { TickerDeepDiveBlock, BlockRenderer } from "@/components/blocks";
 import { generateThreadTitle, getThreadChips, type ThreadChipType } from "@/lib/block-state";
 import { useAuth } from "@/contexts/auth-context";
 import {
-  sendChatQuery,
+  sendChatQueryStreaming,
   getMacroContext,
   getContextSignals,
   getContextWarnings,
   type MacroContext,
   type ContextSignal,
   type ContextWarning,
-  type ToolResult,
-  type ChatQueryResponse,
+  type StreamEvent,
 } from "@/lib/api";
 import type { RenderBlock } from "@/types/render-blocks";
 
@@ -31,8 +31,9 @@ interface Message {
   content: string;
   timestamp: string;
   isLoading?: boolean;
+  toolSteps?: Array<{ id: string; tool: string; args?: Record<string, unknown>; status: "pending" | "running" | "complete"; timing_ms?: number }>;  // Real tool progress from SSE stream
   structuredResponse?: StructuredResponse;
-  blocks?: RenderBlock[];  // NEW: Server-emitted render blocks (preferred format)
+  blocks?: RenderBlock[];  // Server-emitted render blocks (preferred format)
   toolType?: string;
   processingTime?: number;
 }
@@ -143,7 +144,7 @@ export default function ChatPage() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Note: AbortController could be added back for cancellation support
 
   // Deep dive modal state
   const [deepDiveTicker, setDeepDiveTicker] = useState<string | null>(null);
@@ -329,9 +330,6 @@ export default function ChatPage() {
       e.preventDefault();
       if (!input.trim() || isLoading) return;
 
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = new AbortController();
-
       const startTime = Date.now();
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -353,110 +351,137 @@ export default function ChatPage() {
           content: "",
           timestamp: new Date().toISOString(),
           isLoading: true,
+          toolSteps: [], // Will be populated by SSE events
         },
       ]);
 
-      try {
-        // Option 3: ChatGPT selects tools, we get RAW structured results
-        const data = await sendChatQuery(getAccessToken, userMessage.content);
-        const processingTime = Math.round((Date.now() - startTime) / 1000);
+      // Tool type mapping for display
+      const toolTypeMap: Record<string, string> = {
+        get_top_signals: "Signal Discovery",
+        rank_signals_by_macro_scenario: "Scenario Analysis",
+        analyze_ticker: "Ticker Analysis",
+        get_tickers_by_factor: "Factor Screening",
+        simulate_shock: "Shock Simulation",
+        get_macro_data: "Market Context",
+        answer_scenario: "Scenario Analysis",
+        get_cross_factor_exposure: "Multi-Factor Screen",
+      };
 
-        // Determine tool type from tools selected
-        const toolsCalled = data.tools_selected?.map((tc) => tc.tool) || [];
-        const primaryTool = toolsCalled[0] || "analysis";
-        const toolTypeMap: Record<string, string> = {
-          get_top_signals: "Signal Discovery",
-          rank_signals_by_macro_scenario: "Scenario Analysis",
-          analyze_ticker: "Ticker Analysis",
-          get_tickers_by_factor: "Factor Screening",
-          simulate_shock: "Shock Simulation",
-          get_macro_data: "Market Context",
-          answer_scenario: "Scenario Analysis",
-          get_cross_factor_exposure: "Multi-Factor Screen",
-        };
-        const toolType = toolTypeMap[primaryTool] || "Analysis";
+      // Track tools for thread title generation
+      const toolsCalled: string[] = [];
 
-        // Update thread title if first message
-        if (messages.length === 0) {
-          const title = generateThreadTitle({ toolsCalled }, input);
-          const chips = getThreadChips({ toolsCalled });
-          setThreads((prev) =>
-            prev.map((t) =>
-              t.id === activeThreadId
-                ? { ...t, title, lastMessage: input, chips }
-                : t
-            )
-          );
-        }
-
-        // NEW: Check for render blocks format first (preferred)
-        if (!data.error && data.blocks && data.blocks.length > 0) {
-          // Server returns render blocks directly - use BlockRenderer
+      // Handle SSE events
+      const handleEvent = (event: StreamEvent) => {
+        if (event.event === "tool_start") {
+          // Add new tool step as running
+          toolsCalled.push(event.tool || "");
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
                 ? {
                     ...m,
-                    isLoading: false,
-                    blocks: data.blocks,
-                    toolType,
-                    processingTime,
+                    toolSteps: [
+                      ...(m.toolSteps || []),
+                      {
+                        id: event.id || `tool_${Date.now()}`,
+                        tool: event.tool || "",
+                        args: event.args,
+                        status: "running" as const,
+                      },
+                    ],
                   }
                 : m
             )
           );
-
-          // Update thread confidence (extract from first narrative block or default)
-          const narrativeBlock = data.blocks.find((b) => b.type === "narrative");
-          const confidence = narrativeBlock?.meta?.confidence ?? 0.75;
-          setThreads((prev) =>
-            prev.map((t) =>
-              t.id === activeThreadId
-                ? { ...t, confidence: Number(confidence) }
-                : t
-            )
-          );
-        } else if (!data.error && data.ui_type && data.ui_data) {
-          // Legacy: Server returns pre-formatted UI response - map to frontend types
-          const structuredResponse = mapServerUIToFrontend(data.ui_type, data.ui_data);
-
+        } else if (event.event === "tool_complete") {
+          // Update tool step to complete
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
                 ? {
                     ...m,
-                    isLoading: false,
-                    structuredResponse,
-                    toolType,
-                    processingTime,
+                    toolSteps: (m.toolSteps || []).map((step) =>
+                      step.id === event.id
+                        ? { ...step, status: "complete" as const, timing_ms: event.timing_ms }
+                        : step
+                    ),
                   }
                 : m
             )
           );
+        } else if (event.event === "complete") {
+          // Final response - update message with blocks
+          const processingTime = Math.round((Date.now() - startTime) / 1000);
+          const primaryTool = toolsCalled[0] || "analysis";
+          const toolType = toolTypeMap[primaryTool] || "Analysis";
 
-          // Update thread confidence
-          setThreads((prev) =>
-            prev.map((t) =>
-              t.id === activeThreadId
-                ? { ...t, confidence: structuredResponse.confidence }
-                : t
-            )
-          );
-        } else {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? {
-                    ...m,
-                    isLoading: false,
-                    content: data.error || "No tools were able to process this query.",
-                  }
-                : m
-            )
-          );
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name !== "AbortError") {
+          // Update thread title if first message
+          if (messages.length === 0) {
+            const title = generateThreadTitle({ toolsCalled }, userMessage.content);
+            const chips = getThreadChips({ toolsCalled });
+            setThreads((prev) =>
+              prev.map((t) =>
+                t.id === activeThreadId
+                  ? { ...t, title, lastMessage: userMessage.content, chips }
+                  : t
+              )
+            );
+          }
+
+          if (event.blocks && event.blocks.length > 0) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      isLoading: false,
+                      blocks: event.blocks,
+                      toolType,
+                      processingTime,
+                    }
+                  : m
+              )
+            );
+
+            // Update thread confidence
+            const narrativeBlock = event.blocks.find((b) => b.type === "narrative");
+            const confidence = narrativeBlock?.meta?.confidence ?? 0.75;
+            setThreads((prev) =>
+              prev.map((t) =>
+                t.id === activeThreadId
+                  ? { ...t, confidence: Number(confidence) }
+                  : t
+              )
+            );
+          } else if (event.ui_type && event.ui_data) {
+            // Legacy format
+            const structuredResponse = mapServerUIToFrontend(event.ui_type, event.ui_data);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      isLoading: false,
+                      structuredResponse,
+                      toolType,
+                      processingTime,
+                    }
+                  : m
+              )
+            );
+
+            setThreads((prev) =>
+              prev.map((t) =>
+                t.id === activeThreadId
+                  ? { ...t, confidence: structuredResponse.confidence }
+                  : t
+              )
+            );
+          }
+
+          setIsLoading(false);
+        } else if (event.event === "error") {
+          // Handle error
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
@@ -464,17 +489,19 @@ export default function ChatPage() {
                     ...m,
                     isLoading: false,
                     content:
-                      err.message === "Not authenticated"
+                      event.message === "Not authenticated" || event.message === "Session expired"
                         ? "Please log in to continue."
-                        : "Failed to connect. Please try again.",
+                        : event.message || "Failed to process query.",
                   }
                 : m
             )
           );
+          setIsLoading(false);
         }
-      }
+      };
 
-      setIsLoading(false);
+      // Start streaming
+      await sendChatQueryStreaming(getAccessToken, userMessage.content, handleEvent);
     },
     [input, isLoading, messages.length, activeThreadId, getAccessToken, setMessages]
   );
@@ -1073,10 +1100,9 @@ export default function ChatPage() {
                         <p className="text-xl text-primary font-medium">{msg.content}</p>
                       </div>
                     ) : msg.isLoading ? (
-                      /* Loading State */
-                      <div className="flex items-center gap-3 py-4">
-                        <Loader2 size={18} className="animate-spin text-accent" />
-                        <span className="text-sm text-secondary">Analyzing...</span>
+                      /* Loading State - Shows real tool progress when streaming, simple loader otherwise */
+                      <div className="py-4">
+                        <MCPToolAnimation steps={msg.toolSteps} />
                       </div>
                     ) : msg.blocks && msg.blocks.length > 0 ? (
                       /* NEW: Render blocks format (preferred) */

@@ -340,6 +340,110 @@ export interface TickerAnalysis {
   error?: string;
 }
 
+// =============================================================================
+// Streaming Chat API - SSE for real-time tool progress
+// =============================================================================
+
+export interface StreamEvent {
+  event: 'tool_start' | 'tool_complete' | 'complete' | 'error';
+  id?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  timing_ms?: number;
+  message?: string;
+  // Complete event fields
+  query?: string;
+  intent?: string;
+  tools_selected?: Array<{ tool: string; arguments: Record<string, unknown> }>;
+  blocks?: import('@/types/render-blocks').RenderBlock[];
+  ui_type?: string;
+  ui_data?: Record<string, unknown>;
+  total_ms?: number;
+  _debug?: {
+    tool_trace: Array<{ tool: string; arguments: Record<string, unknown>; timing_ms?: number }>;
+    message_id?: string;
+    created_at?: string;
+  };
+}
+
+/**
+ * Send a chat query with streaming tool progress via SSE.
+ *
+ * @param getAccessToken - Function to get auth token
+ * @param query - The user's query
+ * @param onEvent - Callback for each SSE event
+ * @returns Promise that resolves when stream completes
+ */
+export async function sendChatQueryStreaming(
+  getAccessToken: () => Promise<string | null>,
+  query: string,
+  onEvent: (event: StreamEvent) => void
+): Promise<void> {
+  const token = await getAccessToken();
+
+  if (!token) {
+    onEvent({ event: 'error', message: 'Not authenticated' });
+    return;
+  }
+
+  const url = `${BACKEND_URL}/v1/chat/query/stream?q=${encodeURIComponent(query)}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        onEvent({ event: 'error', message: 'Session expired' });
+        return;
+      }
+      onEvent({ event: 'error', message: `API error: ${response.status}` });
+      return;
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      onEvent({ event: 'error', message: 'No response body' });
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse SSE events from buffer
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            onEvent(data as StreamEvent);
+          } catch (e) {
+            console.error('Failed to parse SSE event:', line, e);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    onEvent({ event: 'error', message: error instanceof Error ? error.message : 'Stream failed' });
+  }
+}
+
+// =============================================================================
+// Ticker Deep Dive API
+// =============================================================================
+
 /**
  * Get comprehensive ticker analysis via MCP tool
  */
