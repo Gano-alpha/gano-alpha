@@ -152,10 +152,18 @@ export default function ChatPage() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   // Context panel data - fetched from real API
-  const [macroContext, setMacroContext] = useState({
+  const [macroContext, setMacroContext] = useState<{
+    vix: number;
+    vixChange: number;
+    vixRegime: 'Low' | 'Normal' | 'Elevated' | 'Crisis';
+    rate10y: number;
+    rateChange: number;
+    creditSpread: string;
+    spyChange: number;
+  }>({
     vix: 0,
     vixChange: 0,
-    vixRegime: "Normal" as const,
+    vixRegime: "Normal",
     rate10y: 0,
     rateChange: 0,
     creditSpread: "Loading...",
@@ -175,8 +183,11 @@ export default function ChatPage() {
     severity: "high" | "medium" | "low";
   }>>([]);
 
-  const [modelHealth, setModelHealth] = useState({
-    status: "loading" as "healthy" | "degraded" | "offline" | "loading",
+  const [modelHealth, setModelHealth] = useState<{
+    status: 'healthy' | 'degraded' | 'stale';
+    lastUpdate: string;
+  }>({
+    status: "healthy",
     lastUpdate: "...",
   });
 
@@ -200,7 +211,7 @@ export default function ChatPage() {
           setMacroContext({
             vix: m.vix || 0,
             vixChange: m.vix_change || 0,
-            vixRegime: m.vix_regime || "Normal",
+            vixRegime: (m.vix_regime || "Normal") as 'Low' | 'Normal' | 'Elevated' | 'Crisis',
             rate10y: m.rate_10y || 0,
             rateChange: m.rate_change || 0,
             creditSpread: m.credit_regime || "N/A",
