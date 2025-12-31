@@ -207,7 +207,11 @@ export interface ChatQueryResponse {
     arguments: Record<string, unknown>;
   }>;
   tool_results: ToolResult[];
-  ui_hint: 'ranked_list' | 'split_compare' | 'ticker_deep_dive' | 'evidence' | 'model_trust' | 'narrative' | null;
+  // Legacy field - deprecated
+  ui_hint?: 'ranked_list' | 'split_compare' | 'ticker_deep_dive' | 'evidence' | 'model_trust' | 'narrative' | null;
+  // New pre-formatted UI response from server
+  ui_type?: 'narrative' | 'ranked_list' | 'split_compare' | 'ticker_deep_dive' | 'evidence' | 'scenario_impact' | 'model_trust';
+  ui_data?: Record<string, unknown>;
   error?: string;
 }
 

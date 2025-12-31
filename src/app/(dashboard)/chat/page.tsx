@@ -64,6 +64,12 @@ interface StructuredResponse {
   };
   confidenceStory?: string[];
   insufficientData?: boolean;
+  suggestedQuestions?: string[];
+  evidenceBlocks?: Array<{
+    title: string;
+    content: string;
+    confidence: number;
+  }>;
 }
 
 interface ModelView {
@@ -370,13 +376,9 @@ export default function ChatPage() {
           );
         }
 
-        if (!data.error && data.tool_results?.length > 0) {
-          // Option 3: Transform raw tool results into structured UI response
-          const structuredResponse = transformToolResultsToUI(
-            data.tool_results,
-            data.ui_hint,
-            data.intent
-          );
+        if (!data.error && data.ui_type && data.ui_data) {
+          // Server returns pre-formatted UI response - just map to frontend types
+          const structuredResponse = mapServerUIToFrontend(data.ui_type, data.ui_data);
 
           setMessages((prev) =>
             prev.map((m) =>
@@ -438,7 +440,117 @@ export default function ChatPage() {
   );
 
   // =============================================================================
-  // Option 3: Transform raw tool results into UI-ready structured response
+  // Map server UI response to frontend StructuredResponse (no business logic)
+  // =============================================================================
+  function mapServerUIToFrontend(
+    uiType: string,
+    uiData: Record<string, unknown>
+  ): StructuredResponse {
+    const response: StructuredResponse = {
+      narrative: String(uiData.narrative || ""),
+      confidence: Number(uiData.confidence || 0.5),
+      confidenceStory: uiData.confidence_reasons as string[] | undefined,
+    };
+
+    // Map based on ui_type
+    switch (uiType) {
+      case "narrative":
+        // Already have narrative, nothing else needed
+        if (uiData.suggested_questions) {
+          response.suggestedQuestions = uiData.suggested_questions as string[];
+        }
+        break;
+
+      case "ranked_list":
+        response.rankedResults = (uiData.items as Array<Record<string, unknown>> || []).map(
+          (item) => ({
+            rank: Number(item.rank || 0),
+            ticker: String(item.ticker || ""),
+            metric: String(item.metric || ""),
+            value: String(item.value || ""),
+            confidence: Number(item.confidence || 0.5),
+          })
+        );
+        break;
+
+      case "split_compare":
+        response.splitCompare = {
+          leftTitle: String(uiData.left_title || "Benefit"),
+          rightTitle: String(uiData.right_title || "Hurt"),
+          leftItems: (uiData.left_items as Array<Record<string, unknown>> || []).map(
+            (item) => ({
+              ticker: String(item.ticker || ""),
+              metric: String(item.metric || ""),
+              value: String(item.value || ""),
+            })
+          ),
+          rightItems: (uiData.right_items as Array<Record<string, unknown>> || []).map(
+            (item) => ({
+              ticker: String(item.ticker || ""),
+              metric: String(item.metric || ""),
+              value: String(item.value || ""),
+            })
+          ),
+        };
+        break;
+
+      case "scenario_impact":
+        response.impactRange = uiData.impact_range as { low: string; mid: string; high: string } | undefined;
+        response.rankedResults = (uiData.impacted_tickers as Array<Record<string, unknown>> || []).map(
+          (item) => ({
+            rank: Number(item.rank || 0),
+            ticker: String(item.ticker || ""),
+            metric: String(item.metric || "Impact"),
+            value: String(item.value || ""),
+            confidence: Number(item.confidence || 0.5),
+          })
+        );
+        break;
+
+      case "ticker_deep_dive":
+        // For deep dive, we have rich data - map to evidence blocks
+        response.evidenceBlocks = [];
+        if (uiData.signal) {
+          const sig = uiData.signal as Record<string, unknown>;
+          response.evidenceBlocks.push({
+            title: "Model Signal",
+            content: `${String(sig.direction || "").toUpperCase()} (${sig.tier || sig.signal_tier || ""})`,
+            confidence: Number(sig.conviction || sig.win_probability || 0.5),
+          });
+        }
+        break;
+
+      case "evidence":
+        response.evidenceBlocks = (uiData.evidence_items as Array<Record<string, unknown>> || []).map(
+          (item) => ({
+            title: String(item.title || item.factor || ""),
+            content: String(item.content || item.description || ""),
+            confidence: Number(item.confidence || 0.5),
+          })
+        );
+        break;
+
+      case "model_trust":
+        response.evidenceBlocks = [
+          {
+            title: "Model Accuracy",
+            content: `${(Number(uiData.accuracy || 0) * 100).toFixed(1)}% win rate`,
+            confidence: Number(uiData.accuracy || 0.5),
+          },
+        ];
+        break;
+    }
+
+    // Check for insufficient data
+    if (!response.narrative || response.confidence < 0.4) {
+      response.insufficientData = true;
+    }
+
+    return response;
+  }
+
+  // =============================================================================
+  // DEPRECATED: Legacy transform - kept for backwards compatibility
   // =============================================================================
   function transformToolResultsToUI(
     toolResults: ToolResult[],
@@ -463,16 +575,70 @@ export default function ChatPage() {
       confidence: 0.75,
     };
 
-    // Handle split_compare (rank_signals_by_macro_scenario, get_tickers_by_factor with both)
-    if (uiHint === "split_compare" || tool === "rank_signals_by_macro_scenario") {
-      const benefit = (result.benefit || result.beneficiaries || result.aligned_signals || []) as Array<Record<string, unknown>>;
-      const hurt = (result.hurt || result.losers || []) as Array<Record<string, unknown>>;
+    // Handle rank_signals_by_macro_scenario (Catalyst + Signal logic)
+    if (tool === "rank_signals_by_macro_scenario") {
+      // New structure: catalyst_plus_signal (best) + catalyst_only (secondary)
+      const catalystPlusSignal = (result.catalyst_plus_signal || []) as Array<Record<string, unknown>>;
+      const catalystOnly = (result.catalyst_only || []) as Array<Record<string, unknown>>;
+      const serverNarrative = result.narrative as string || "";
       const scenario = (primaryResult.arguments as Record<string, unknown>).macro_event as string || "scenario";
 
       // Check if we have any data
+      if (catalystPlusSignal.length === 0 && catalystOnly.length === 0) {
+        response.narrative = `No stocks found sensitive to ${scenario.replace("_", " ")}. Factor data may be updating.`;
+        response.confidence = 0.5;
+        response.insufficientData = true;
+        return response;
+      }
+
+      // Use server narrative if available
+      response.narrative = serverNarrative || `Stocks ranked by ${scenario.replace("_", " ")} sensitivity`;
+      response.confidence = catalystPlusSignal.length > 0 ? 0.88 : 0.72;
+
+      // Show as split compare: Catalyst+Signal (left/best) vs Catalyst Only (right/secondary)
+      if (catalystPlusSignal.length > 0 || catalystOnly.length > 0) {
+        response.splitCompare = {
+          leftTitle: "Catalyst + Signal",
+          rightTitle: "Catalyst Only",
+          leftItems: catalystPlusSignal.slice(0, 10).map((s) => ({
+            ticker: String(s.ticker || ""),
+            metric: String(s.signal_tier || "SIGNAL"),
+            value: s.signal_conviction
+              ? `${(Number(s.signal_conviction) * 100).toFixed(0)}% conv`
+              : `β ${Number(s.factor_beta || 0).toFixed(2)}`,
+          })),
+          rightItems: catalystOnly.slice(0, 10).map((s) => ({
+            ticker: String(s.ticker || ""),
+            metric: String(s.sector || "Factor"),
+            value: `β ${Number(s.factor_beta || 0).toFixed(2)}`,
+          })),
+        };
+      }
+
+      // Also provide ranked results (prioritize catalyst+signal)
+      const allRanked = [...catalystPlusSignal, ...catalystOnly];
+      if (allRanked.length > 0) {
+        response.rankedResults = allRanked.slice(0, 15).map((s, i) => ({
+          rank: i + 1,
+          ticker: String(s.ticker || ""),
+          metric: s.has_signal ? "CATALYST+SIGNAL" : "CATALYST",
+          value: s.signal_conviction
+            ? `${(Number(s.signal_conviction) * 100).toFixed(0)}%`
+            : `β ${Number(s.factor_beta || 0).toFixed(2)}`,
+          confidence: Number(s.signal_conviction || s.factor_r_squared || 0.6),
+        }));
+      }
+
+      return response;
+    }
+
+    // Handle split_compare (get_tickers_by_factor with both directions)
+    if (uiHint === "split_compare") {
+      const benefit = (result.benefit || result.beneficiaries || []) as Array<Record<string, unknown>>;
+      const hurt = (result.hurt || result.losers || []) as Array<Record<string, unknown>>;
+
       if (benefit.length === 0 && hurt.length === 0) {
-        // No data - show informative message instead of empty split
-        response.narrative = `No active signals found for the ${scenario.replace("_", " ")} scenario. This could mean:\n• No stocks currently meet the conviction threshold\n• Factor sensitivities are being recalculated\n\nTry asking for "top signals" or "analyze [ticker]" instead.`;
+        response.narrative = "No factor data available for this query.";
         response.confidence = 0.5;
         response.insufficientData = true;
         return response;
@@ -493,23 +659,8 @@ export default function ChatPage() {
         })),
       };
 
-      // Add narrative summary
-      const benefitCount = benefit.length;
-      const hurtCount = hurt.length;
-      response.narrative = `${benefitCount} stocks benefit from ${scenario.replace("_", " ")}, ${hurtCount} get hurt. Ranked by factor sensitivity and model conviction.`;
-      response.confidence = 0.82;
-
-      // Also add as ranked results for alternate view
-      if (benefit.length > 0) {
-        response.rankedResults = benefit.slice(0, 10).map((s, i) => ({
-          rank: i + 1,
-          ticker: String(s.ticker || ""),
-          metric: formatFactorMetric(s),
-          value: formatFactorValue(s),
-          confidence: Number(s.conviction || s.composite_score || 0.7),
-        }));
-      }
-
+      response.narrative = `${benefit.length} stocks benefit, ${hurt.length} get hurt. Ranked by factor sensitivity.`;
+      response.confidence = 0.78;
       return response;
     }
 
@@ -630,6 +781,98 @@ export default function ChatPage() {
         response.confidenceStory = info.capabilities.map(c =>
           typeof c === "string" ? `• ${c}` : `• ${c.name}: ${c.description}`
         );
+      }
+
+      return response;
+    }
+
+    // Handle answer_scenario (geopolitical/macro scenario simulation)
+    if (tool === "answer_scenario" || tool === "simulate_shock") {
+      const structured = result.structured_response as Record<string, unknown> | undefined;
+      if (structured) {
+        response.narrative = String(structured.narrative || "Scenario analysis complete.");
+        response.confidence = Number(structured.confidence || 0.7);
+
+        // Add confidence story
+        if (structured.confidenceStory) {
+          response.confidenceStory = structured.confidenceStory as string[];
+        }
+
+        // Add impact range
+        if (structured.impactRange) {
+          response.impactRange = structured.impactRange as { low: string; mid: string; high: string };
+        }
+
+        // Extract exposure map for ranked results
+        const exposureMap = structured.exposureMap as Record<string, unknown> | undefined;
+        if (exposureMap?.topImpacted) {
+          const impacted = exposureMap.topImpacted as Array<Record<string, unknown>>;
+          response.rankedResults = impacted.map((item, i) => ({
+            rank: i + 1,
+            ticker: String(item.ticker || ""),
+            metric: "Impact",
+            value: String(item.impact || ""),
+            confidence: Number(item.confidence || 0.7),
+          }));
+        }
+
+        return response;
+      }
+    }
+
+    // Handle red flags / ticker warnings (multiple tools combined)
+    if (tool === "get_early_warning" || tool === "get_short_interest" || tool === "get_insider_activity") {
+      // Combine results from all warning-related tools
+      const warnings: string[] = [];
+      const ticker = String(result.ticker || "");
+
+      for (const tr of toolResults) {
+        const r = tr.result as Record<string, unknown>;
+
+        // Early warnings
+        if (tr.tool === "get_early_warning" && r.signals) {
+          const signals = r.signals as Array<Record<string, unknown>>;
+          signals.forEach(s => {
+            warnings.push(`⚠️ ${s.signal_type}: ${s.description || s.message}`);
+          });
+        }
+
+        // Short interest
+        if (tr.tool === "get_short_interest" && r.found) {
+          const current = r.current as Record<string, unknown> | undefined;
+          const change = r.change as number | undefined;
+          if (current) {
+            const daysTocover = Number(current.days_to_cover || 0);
+            const shortInterest = Number(current.short_interest || 0);
+            if (shortInterest > 0) {
+              warnings.push(`📊 Short interest: ${(shortInterest / 1e6).toFixed(1)}M shares (${daysTocover.toFixed(1)} days to cover)`);
+            }
+            if (change && Math.abs(change) > 5) {
+              warnings.push(`${change > 0 ? "📈" : "📉"} Short interest ${change > 0 ? "up" : "down"} ${Math.abs(change).toFixed(1)}% recently`);
+            }
+          }
+        }
+
+        // Insider activity
+        if (tr.tool === "get_insider_activity" && r.found) {
+          const summary = r.summary as Record<string, unknown> | undefined;
+          if (summary) {
+            const netShares = Number(summary.net_shares || 0);
+            if (netShares < -100000) {
+              warnings.push(`🚨 Insider selling: ${(Math.abs(netShares) / 1000).toFixed(0)}K shares net sold`);
+            } else if (netShares > 100000) {
+              warnings.push(`✅ Insider buying: ${(netShares / 1000).toFixed(0)}K shares net bought`);
+            }
+          }
+        }
+      }
+
+      if (warnings.length > 0) {
+        response.narrative = `Red flags analysis for ${ticker}:\n\n${warnings.join("\n")}`;
+        response.confidence = 0.75;
+      } else {
+        response.narrative = `No significant red flags found for ${ticker}. Short interest and insider activity appear normal.`;
+        response.confidence = 0.8;
       }
 
       return response;
