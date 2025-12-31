@@ -3,8 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-// Backend API URL
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+// Backend API URL - port 8000 must be open in security group
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://18.117.82.161:8000'
 
 interface User {
   user_id: string
@@ -98,10 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const publicRoutes = ['/login', '/signup', '/forgot-password']
     const isPublicRoute = publicRoutes.includes(pathname)
 
-    if (!user && !isPublicRoute) {
+    if (!user && !isPublicRoute && pathname !== '/') {
       router.push('/login')
     } else if (user && isPublicRoute) {
-      router.push('/home')
+      router.push('/chat')
     }
   }, [user, loading, pathname, router])
 

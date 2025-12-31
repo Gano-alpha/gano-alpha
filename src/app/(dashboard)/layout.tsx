@@ -1,49 +1,68 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Sidebar } from '@/components/layout/sidebar'
-import { useAuth } from '@/contexts/auth-context'
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import Link from "next/link";
+import { User, LogOut } from "lucide-react";
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const { user, loading, isAuthenticated } = useAuth()
-  const router = useRouter()
+  const { isAuthenticated, loading, user, logout } = useAuth();
+  const router = useRouter();
 
-  // Protect dashboard routes - redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.replace('/login')
+      router.push('/login');
     }
-  }, [loading, isAuthenticated, router])
+  }, [isAuthenticated, loading, router]);
 
-  // Show nothing while checking auth (prevents flash of content)
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-canvas">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
-    )
+    );
   }
 
-  // Don't render dashboard if not authenticated
   if (!isAuthenticated) {
-    return null
+    return null;
   }
 
   return (
-    <div className="flex h-screen bg-canvas overflow-hidden">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      <main className="flex-1 overflow-auto">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Minimal Top Bar - Logo only, no tabs */}
+      <header className="h-12 border-b border-border bg-surface/50 backdrop-blur-sm flex-shrink-0">
+        <div className="h-full px-4 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/chat" className="text-lg font-semibold text-primary tracking-tight">
+            GanoAlpha
+          </Link>
+
+          {/* Profile Menu */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface transition-colors">
+              <User size={14} className="text-muted" />
+              <span className="text-xs text-muted">{user?.email}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-secondary rounded-lg hover:bg-surface transition-colors"
+            >
+              <LogOut size={12} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content - Full height below header */}
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
     </div>
-  )
+  );
 }

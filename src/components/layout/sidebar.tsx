@@ -12,6 +12,7 @@ import {
   HelpCircle,
   LogOut,
   ChevronLeft,
+  Cpu,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -48,6 +49,11 @@ const navigation = [
 ]
 
 const secondaryNavigation = [
+  {
+    name: 'Technology',
+    href: '/dashboard/technology',
+    icon: Cpu,
+  },
   {
     name: 'Settings',
     href: '/settings',
