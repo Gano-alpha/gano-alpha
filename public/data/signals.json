@@ -1,0 +1,98 @@
+[
+  {
+    "ticker": "ONTO",
+    "date": "2024-12-29",
+    "confidence": "89.4%",
+    "centrality_score": 87.2,
+    "signal_type": "BUY",
+    "context": "Supply chain dip"
+  },
+  {
+    "ticker": "AEHR",
+    "date": "2024-12-29",
+    "confidence": "82.1%",
+    "centrality_score": 76.8,
+    "signal_type": "BUY",
+    "context": "TSMC dependency"
+  },
+  {
+    "ticker": "ASML",
+    "date": "2024-12-28",
+    "confidence": "91.2%",
+    "centrality_score": 94.1,
+    "signal_type": "BUY",
+    "context": "Monopoly position"
+  },
+  {
+    "ticker": "KLAC",
+    "date": "2024-12-28",
+    "confidence": "78.3%",
+    "centrality_score": 72.4,
+    "signal_type": "BUY",
+    "context": "Bathwater pattern"
+  },
+  {
+    "ticker": "LRCX",
+    "date": "2024-12-27",
+    "confidence": "65.7%",
+    "centrality_score": 68.9,
+    "signal_type": "WATCH",
+    "context": "Merton PD elevated"
+  },
+  {
+    "ticker": "NVDA",
+    "date": "2024-12-27",
+    "confidence": "94.6%",
+    "centrality_score": 98.2,
+    "signal_type": "BUY",
+    "context": "Flow centrality peak"
+  },
+  {
+    "ticker": "AMD",
+    "date": "2024-12-26",
+    "confidence": "71.8%",
+    "centrality_score": 81.3,
+    "signal_type": "BUY",
+    "context": "Structural oversold"
+  },
+  {
+    "ticker": "INTC",
+    "date": "2024-12-26",
+    "confidence": "58.2%",
+    "centrality_score": 45.6,
+    "signal_type": "WATCH",
+    "context": "Risk elevated"
+  },
+  {
+    "ticker": "MRVL",
+    "date": "2024-12-25",
+    "confidence": "85.9%",
+    "centrality_score": 82.7,
+    "signal_type": "BUY",
+    "context": "Network effect"
+  },
+  {
+    "ticker": "QCOM",
+    "date": "2024-12-25",
+    "confidence": "73.4%",
+    "centrality_score": 69.5,
+    "signal_type": "BUY",
+    "context": "Mobile supply hub"
+  },
+  {
+    "ticker": "AVGO",
+    "date": "2024-12-24",
+    "confidence": "88.7%",
+    "centrality_score": 91.3,
+    "signal_type": "BUY",
+    "context": "Infrastructure core"
+  },
+  {
+    "ticker": "MU",
+    "date": "2024-12-24",
+    "confidence": "67.2%",
+    "centrality_score": 62.8,
+    "signal_type": "WATCH",
+    "context": "Cycle rotation"
+  }
+]
