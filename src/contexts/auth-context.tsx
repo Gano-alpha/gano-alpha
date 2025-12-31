@@ -3,8 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-// Backend API URL - port 8000 must be open in security group
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://18.117.82.161:8000'
+// Backend API URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.ganoalpha.com'
 
 interface User {
   user_id: string

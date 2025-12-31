@@ -10,7 +10,7 @@ import {
 import type { Message, StructuredResponse } from "./types";
 import { EXCLUDED_TICKER_WORDS } from "./types";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://18.117.82.161:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.ganoalpha.com';
 
 // =============================================================================
 // Utility functions

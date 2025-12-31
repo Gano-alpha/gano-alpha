@@ -27,7 +27,7 @@ interface GraphData {
   };
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://18.117.82.161:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.ganoalpha.com';
 
 export default function NetworkMap() {
   const [data, setData] = useState<GraphData>({ nodes: [], links: [] });
