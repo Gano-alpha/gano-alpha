@@ -1,0 +1,355 @@
+/**
+ * API utilities for Gano Alpha
+ * Handles authenticated requests to the backend
+ */
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://18.117.82.161:8000';
+
+export interface Signal {
+  ticker: string;
+  signal_date: string;
+  signal_tier: 'SNIPER' | 'SCOUT';
+  direction: 'LONG' | 'SHORT';
+  model_score: number;
+  confidence: number;
+  centrality_flow: number;
+  centrality_degree: number;
+  merton_pd_1y: number | null;
+  altman_z: number | null;
+  cds_proxy_score: number | null;
+  sharpe_21d: number | null;
+  max_drawdown: number | null;
+  supplier_count: number;
+  customer_count: number;
+  sector: string | null;
+  context: string | null;
+}
+
+export interface SignalsResponse {
+  status: string;
+  count: number;
+  signals: Signal[];
+  asOfDate: string;
+}
+
+export interface GraphConfidence {
+  total_nodes: number;
+  total_edges: number;
+  edge_confidence_avg: number;
+  high_confidence_edges: number;
+  coverage_percent: number;
+}
+
+export interface HealthResponse {
+  status: string;
+  database: string;
+  graph_loaded: boolean;
+  graph_nodes: number;
+  graph_edges: number;
+}
+
+export interface WhisperItem {
+  ticker: string;
+  signal_type: string;
+  signal_value: number;
+  delta_1d: number | null;
+  delta_7d: number | null;
+  updated_at: string;
+}
+
+export interface WhispersResponse {
+  status: string;
+  count: number;
+  whispers: WhisperItem[];
+}
+
+export interface MiniGraphNode {
+  id: string;
+  label: string;
+  type: 'center' | 'supplier' | 'customer';
+  sector?: string;
+}
+
+export interface MiniGraphEdge {
+  source: string;
+  target: string;
+  relationship: string;
+  confidence: number;
+}
+
+export interface MiniGraphResponse {
+  status: string;
+  ticker: string;
+  nodes: MiniGraphNode[];
+  edges: MiniGraphEdge[];
+}
+
+/**
+ * Fetch with authentication token
+ */
+export async function fetchWithAuth<T>(
+  endpoint: string,
+  getAccessToken: () => Promise<string | null>,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getAccessToken();
+
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Session expired');
+    }
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Public API endpoints (no auth required)
+ */
+export async function getHealth(): Promise<HealthResponse> {
+  const response = await fetch(`${BACKEND_URL}/health`);
+  return response.json();
+}
+
+/**
+ * Get signals (requires auth)
+ */
+export async function getSignals(
+  getAccessToken: () => Promise<string | null>,
+  options?: { tier?: 'SNIPER' | 'SCOUT'; limit?: number; date?: string }
+): Promise<SignalsResponse> {
+  const params = new URLSearchParams();
+  if (options?.tier) params.set('tier', options.tier);
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.date) params.set('date', options.date);
+
+  const queryString = params.toString();
+  const endpoint = `/v1/signals${queryString ? `?${queryString}` : ''}`;
+
+  return fetchWithAuth<SignalsResponse>(endpoint, getAccessToken);
+}
+
+/**
+ * Get graph confidence metrics (requires auth)
+ */
+export async function getGraphConfidence(
+  getAccessToken: () => Promise<string | null>
+): Promise<GraphConfidence> {
+  return fetchWithAuth<GraphConfidence>('/v1/metrics/graph-confidence', getAccessToken);
+}
+
+/**
+ * Get whispers/anomalies (requires auth)
+ */
+export async function getWhispers(
+  getAccessToken: () => Promise<string | null>,
+  options?: { limit?: number }
+): Promise<WhispersResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', options.limit.toString());
+
+  const queryString = params.toString();
+  const endpoint = `/v1/whispers${queryString ? `?${queryString}` : ''}`;
+
+  return fetchWithAuth<WhispersResponse>(endpoint, getAccessToken);
+}
+
+/**
+ * Get mini graph for a ticker (requires auth)
+ */
+export async function getMiniGraph(
+  getAccessToken: () => Promise<string | null>,
+  ticker: string
+): Promise<MiniGraphResponse> {
+  return fetchWithAuth<MiniGraphResponse>(`/v1/mini-graph/${ticker}`, getAccessToken);
+}
+
+/**
+ * Search stocks (requires auth)
+ */
+export async function searchStocks(
+  getAccessToken: () => Promise<string | null>,
+  query: string,
+  limit: number = 10
+): Promise<{ status: string; results: Array<{ ticker: string; name: string; sector: string }> }> {
+  return fetchWithAuth(`/v1/stocks/search?q=${encodeURIComponent(query)}&limit=${limit}`, getAccessToken);
+}
+
+// =============================================================================
+// Chat API - Option 3 Structured Response (No ChatGPT Synthesis)
+// =============================================================================
+
+export interface ToolResult {
+  tool: string;
+  arguments: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+export interface ChatQueryResponse {
+  query: string;
+  intent: string | null;
+  tools_selected: Array<{
+    tool: string;
+    arguments: Record<string, unknown>;
+  }>;
+  tool_results: ToolResult[];
+  ui_hint: 'ranked_list' | 'split_compare' | 'ticker_deep_dive' | 'evidence' | 'model_trust' | 'narrative' | null;
+  error?: string;
+}
+
+/**
+ * Send a natural language query to GANO.
+ *
+ * Option 3 Architecture:
+ * - ChatGPT selects appropriate tools
+ * - Tools are executed
+ * - RAW structured results returned (no ChatGPT prose synthesis)
+ * - Frontend renders structured data as UI cards
+ */
+export async function sendChatQuery(
+  getAccessToken: () => Promise<string | null>,
+  query: string
+): Promise<ChatQueryResponse> {
+  return fetchWithAuth<ChatQueryResponse>('/v1/chat/query', getAccessToken, {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+}
+
+// =============================================================================
+// Context Panel API - Market Context, Signals, Warnings
+// =============================================================================
+
+export interface MacroContext {
+  vix: number | null;
+  vix_change: number | null;
+  vix_regime: 'High' | 'Normal' | 'Low';
+  rate_10y: number | null;
+  rate_change: number | null;
+  credit_spread: number | null;
+  credit_regime: string | null;
+  spy_change: number | null;
+  regime_summary: string[];
+  error?: string;
+}
+
+export interface ContextSignal {
+  ticker: string;
+  model: 'OG' | 'Sniper';
+  direction: 'long' | 'short';
+  score: number;
+}
+
+export interface ContextWarning {
+  ticker: string;
+  type: string;
+  severity: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Get current macro context (VIX, rates, credit spreads)
+ */
+export async function getMacroContext(
+  getAccessToken: () => Promise<string | null>
+): Promise<MacroContext> {
+  return fetchWithAuth<MacroContext>('/v1/context/macro', getAccessToken);
+}
+
+/**
+ * Get top signals for context panel
+ */
+export async function getContextSignals(
+  getAccessToken: () => Promise<string | null>,
+  topK: number = 10
+): Promise<{ signals: ContextSignal[]; error?: string }> {
+  return fetchWithAuth<{ signals: ContextSignal[]; error?: string }>(
+    `/v1/context/signals?top_k=${topK}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get early warnings for context panel
+ */
+export async function getContextWarnings(
+  getAccessToken: () => Promise<string | null>,
+  topK: number = 5
+): Promise<{ warnings: ContextWarning[]; error?: string }> {
+  return fetchWithAuth<{ warnings: ContextWarning[]; error?: string }>(
+    `/v1/context/warnings?top_k=${topK}`,
+    getAccessToken
+  );
+}
+
+// =============================================================================
+// Ticker Deep Dive API
+// =============================================================================
+
+export interface TickerAnalysis {
+  ticker: string;
+  company_name?: string;
+  sector?: string;
+  supply_chain?: {
+    suppliers: Array<{ ticker: string; relationship: string; confidence: number }>;
+    customers: Array<{ ticker: string; relationship: string; confidence: number }>;
+  };
+  factor_sensitivities?: {
+    market_beta: number;
+    rate_10y_beta: number;
+    vix_beta: number;
+    dollar_beta: number;
+    oil_beta: number;
+    r_squared: number;
+  };
+  model_signals?: {
+    og?: { direction: string; conviction: number };
+    sniper?: { direction: string; conviction: number };
+  };
+  early_warnings?: Array<{
+    type: string;
+    severity: string;
+    message: string;
+  }>;
+  error?: string;
+}
+
+/**
+ * Get comprehensive ticker analysis via MCP tool
+ */
+export async function analyzeTicker(
+  getAccessToken: () => Promise<string | null>,
+  ticker: string
+): Promise<TickerAnalysis> {
+  const response = await fetchWithAuth<{
+    tool: string;
+    success: boolean;
+    result?: TickerAnalysis;
+    error?: string;
+  }>('/v1/chat/execute', getAccessToken, {
+    method: 'POST',
+    body: JSON.stringify({
+      tool: 'analyze_ticker',
+      arguments: { ticker: ticker.toUpperCase() }
+    }),
+  });
+
+  if (!response.success) {
+    return { ticker, error: response.error || 'Analysis failed' };
+  }
+
+  return response.result || { ticker, error: 'No data' };
+}
