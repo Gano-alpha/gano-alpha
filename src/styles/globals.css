@@ -2,66 +2,155 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =================================================================
+   GANO Design System - Global Styles
+   Jony Ive inspired: clean, precise, generous whitespace
+   ================================================================= */
+
 @layer base {
   * {
     @apply border-border;
   }
 
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-background text-primary antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-primary font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   }
 
   /* Selection styling */
   ::selection {
-    @apply bg-accent/20 text-primary;
+    @apply bg-accent/15 text-primary;
+  }
+
+  /* Focus visible - consistent across all interactive elements */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/30 ring-offset-2 ring-offset-background;
+  }
+
+  /* Headings - clear hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-primary font-semibold tracking-tight;
+  }
+
+  h1 { @apply text-4xl md:text-5xl; }
+  h2 { @apply text-2xl md:text-3xl; }
+  h3 { @apply text-xl md:text-2xl; }
+  h4 { @apply text-lg md:text-xl; }
+
+  /* Small text */
+  small {
+    @apply text-sm text-muted;
   }
 }
 
 @layer components {
-  /* Cards */
+  /* ===============================================================
+     CARDS - Clean, elevated surfaces
+     =============================================================== */
+  .card {
+    @apply bg-surface rounded-lg border border-border;
+  }
+
   .card-base {
-    @apply bg-surface rounded-xl border border-border;
+    @apply bg-surface rounded-lg border border-border;
   }
 
   .card-elevated {
-    @apply bg-surface rounded-xl border border-border shadow-card;
+    @apply bg-surface rounded-lg border border-border shadow-card;
   }
 
-  /* Inputs */
-  .input-base {
-    @apply w-full px-4 py-3 bg-background border border-border rounded-lg
-           text-primary placeholder:text-muted
-           focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent
-           transition-all duration-200;
+  .card-interactive {
+    @apply card hover:shadow-elevated hover:border-border-dark
+           transition-all duration-normal cursor-pointer;
   }
 
-  /* Buttons */
+  /* ===============================================================
+     BUTTONS - Three variants only: primary, secondary, ghost
+     =============================================================== */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           px-4 py-2.5 rounded-md text-sm font-medium
+           transition-all duration-fast
+           disabled:opacity-50 disabled:pointer-events-none
+           focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-accent/30 focus-visible:ring-offset-2;
+  }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2.5
-           bg-accent text-white font-medium rounded-lg
-           hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent/20
-           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn bg-primary text-white
+           hover:bg-primary/90 active:bg-primary/80;
+  }
+
+  .btn-accent {
+    @apply btn bg-accent text-white
+           hover:bg-accent-dark active:bg-accent-dark/90;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2.5
-           bg-surface text-primary font-medium rounded-lg border border-border
-           hover:bg-background focus:outline-none focus:ring-2 focus:ring-border
-           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn bg-surface text-primary border border-border
+           hover:bg-background hover:border-border-dark;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center px-4 py-2.5
-           text-secondary font-medium rounded-lg
-           hover:bg-surface hover:text-primary
-           focus:outline-none
-           transition-all duration-200;
+    @apply btn text-secondary
+           hover:bg-surface hover:text-primary;
   }
 
-  /* Badges / Chips */
+  .btn-danger {
+    @apply btn bg-danger text-white
+           hover:bg-danger-dark;
+  }
+
+  /* Button sizes */
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base rounded-lg;
+  }
+
+  /* ===============================================================
+     INPUTS - Clean, minimal
+     =============================================================== */
+  .input {
+    @apply w-full px-4 py-2.5
+           bg-surface border border-border rounded-md
+           text-primary text-sm
+           placeholder:text-muted
+           focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent
+           transition-all duration-fast
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input-base {
+    @apply input;
+  }
+
+  .input-lg {
+    @apply input px-5 py-3.5 text-base rounded-lg;
+  }
+
+  .input-error {
+    @apply border-danger focus:ring-danger/20 focus:border-danger;
+  }
+
+  /* ===============================================================
+     BADGES / CHIPS - Subtle, informative
+     =============================================================== */
   .badge {
-    @apply inline-flex items-center px-2.5 py-1 rounded text-xs font-medium;
+    @apply inline-flex items-center px-2 py-0.5
+           rounded text-xs font-medium;
+  }
+
+  .badge-default {
+    @apply bg-chip-gray text-secondary;
   }
 
   .badge-coral {
@@ -76,33 +165,137 @@
     @apply bg-chip-amber text-warning;
   }
 
-  /* Metric cards */
+  .badge-success {
+    @apply bg-chip-green text-success;
+  }
+
+  .badge-danger {
+    @apply bg-chip-red text-danger;
+  }
+
+  /* Signal badges - clear buy/sell */
+  .badge-buy {
+    @apply bg-success-muted text-success font-semibold;
+  }
+
+  .badge-sell {
+    @apply bg-danger-muted text-danger font-semibold;
+  }
+
+  /* ===============================================================
+     METRIC CARDS - Data display
+     =============================================================== */
   .metric-card {
-    @apply card-elevated p-5 space-y-2;
+    @apply card-elevated p-6 space-y-3;
   }
 
   .metric-value {
-    @apply text-2xl font-mono text-primary tracking-tight tabular-nums;
+    @apply text-3xl font-mono text-primary tracking-tight tabular-nums;
   }
 
   .metric-label {
-    @apply text-sm text-muted;
+    @apply text-sm text-muted font-medium;
+  }
+
+  .metric-change {
+    @apply text-sm font-mono;
   }
 
   .metric-change-positive {
-    @apply text-sm font-mono text-teal;
+    @apply metric-change text-teal;
   }
 
   .metric-change-negative {
-    @apply text-sm font-mono text-danger;
+    @apply metric-change text-danger;
+  }
+
+  /* ===============================================================
+     NAVIGATION
+     =============================================================== */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-md
+           text-sm text-secondary font-medium
+           hover:bg-surface hover:text-primary
+           transition-colors duration-fast;
+  }
+
+  .nav-item-active {
+    @apply nav-item bg-accent-muted text-accent;
+  }
+
+  /* ===============================================================
+     SECTIONS & CONTAINERS
+     =============================================================== */
+  .section {
+    @apply py-16 md:py-24;
+  }
+
+  .container-narrow {
+    @apply max-w-narrow mx-auto px-6;
+  }
+
+  .container-content {
+    @apply max-w-content mx-auto px-6;
+  }
+
+  .container-wide {
+    @apply max-w-wide mx-auto px-6;
+  }
+
+  /* ===============================================================
+     DIVIDERS
+     =============================================================== */
+  .divider {
+    @apply border-t border-border;
+  }
+
+  .divider-subtle {
+    @apply border-t border-border-light;
+  }
+
+  /* ===============================================================
+     DATA TABLES
+     =============================================================== */
+  .table-header {
+    @apply text-xs text-muted uppercase tracking-wider font-medium;
+  }
+
+  .table-row {
+    @apply border-b border-border-light last:border-0;
+  }
+
+  .table-cell {
+    @apply py-3 px-4;
+  }
+
+  /* ===============================================================
+     LOADING STATES
+     =============================================================== */
+  .skeleton {
+    @apply bg-border animate-pulse rounded;
   }
 }
 
 @layer utilities {
+  /* Text utilities */
   .text-balance {
     text-wrap: balance;
   }
 
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Number formatting */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .slashed-zero {
+    font-variant-numeric: slashed-zero;
+  }
+
+  /* Animation utilities */
   .animate-in {
     animation: fadeIn 0.2s ease-out;
   }
@@ -114,15 +307,93 @@
   .animate-fade-in {
     animation: fade-in 0.3s ease-out forwards;
   }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent to-teal bg-clip-text text-transparent;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-/* Keyframes for block animations */
+/* =================================================================
+   SCROLLBAR - Subtle, warm gray
+   ================================================================= */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d0c9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b8b4ad;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d0c9 transparent;
+}
+
+/* =================================================================
+   ANIMATIONS - Keyframes
+   ================================================================= */
 @keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
   from {
     opacity: 0;
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -137,51 +408,7 @@
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Custom scrollbar - Light theme */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a3a3a3;
-}
-
-/* Number formatting */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Typography */
+/* Typography - Mono font */
 .font-mono {
-  font-family: var(--font-jetbrains), 'JetBrains Mono', monospace;
+  font-family: var(--font-jetbrains), 'JetBrains Mono', 'SF Mono', Monaco, monospace;
 }

@@ -6,29 +6,31 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'bg-slate-900 text-white hover:bg-slate-800 focus-visible:ring-slate-900',
+          'bg-primary text-white hover:bg-primary/90 active:bg-primary/80',
+        accent:
+          'bg-accent text-white hover:bg-accent-dark active:bg-accent-dark/90',
         destructive:
-          'bg-sell text-white hover:bg-red-600 focus-visible:ring-sell',
+          'bg-danger text-white hover:bg-danger-dark',
         success:
-          'bg-buy text-white hover:bg-emerald-600 focus-visible:ring-buy',
+          'bg-success text-white hover:bg-success-dark',
         outline:
-          'border border-slate-200 bg-surface text-primary hover:bg-slate-50 focus-visible:ring-slate-200',
+          'border border-border bg-surface text-primary hover:bg-background hover:border-border-dark',
         secondary:
-          'bg-slate-100 text-primary hover:bg-slate-200 focus-visible:ring-slate-200',
+          'bg-surface text-primary border border-border hover:bg-background hover:border-border-dark',
         ghost:
-          'text-secondary hover:bg-slate-100 hover:text-primary focus-visible:ring-slate-200',
-        link: 'text-indigo-600 underline-offset-4 hover:underline',
+          'text-secondary hover:bg-surface hover:text-primary',
+        link: 'text-accent underline-offset-4 hover:underline hover:text-accent-dark',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-12 rounded-lg px-6 text-base',
-        xl: 'h-14 rounded-xl px-8 text-lg',
+        default: 'h-10 px-4 py-2.5',
+        sm: 'h-8 px-3 py-1.5 text-xs rounded',
+        lg: 'h-12 px-6 py-3 text-base rounded-lg',
+        xl: 'h-14 px-8 py-4 text-lg rounded-xl',
         icon: 'h-10 w-10',
         'icon-sm': 'h-8 w-8',
       },

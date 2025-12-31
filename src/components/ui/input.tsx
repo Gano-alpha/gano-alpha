@@ -21,14 +21,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           type={type}
           className={cn(
-            'flex h-10 w-full rounded-lg border border-slate-200 bg-surface px-4 py-2 text-sm text-primary',
+            'flex h-10 w-full rounded-md border border-border bg-surface px-4 py-2.5 text-sm text-primary',
             'placeholder:text-muted',
-            'focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500',
+            'focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            'transition-all duration-200',
+            'transition-all duration-fast',
             icon && iconPosition === 'left' && 'pl-10',
             icon && iconPosition === 'right' && 'pr-10',
-            error && 'border-sell focus:border-sell focus:ring-sell/20',
+            error && 'border-danger focus:border-danger focus:ring-danger/20',
             className
           )}
           ref={ref}
@@ -40,7 +40,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </div>
         )}
         {error && (
-          <p className="mt-1.5 text-xs text-sell">{error}</p>
+          <p className="mt-1.5 text-xs text-danger">{error}</p>
         )}
       </div>
     )

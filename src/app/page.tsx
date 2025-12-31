@@ -62,61 +62,61 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto">
-        <div className="text-lg font-semibold text-primary tracking-tight">
+      {/* Header - Clean, minimal */}
+      <header className="px-8 py-6 flex items-center justify-between max-w-5xl mx-auto">
+        <div className="text-xl font-semibold text-primary tracking-tight">
           GanoAlpha
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Link
             href="/login"
-            className="text-sm text-secondary hover:text-primary transition-colors px-3 py-2"
+            className="text-sm text-secondary hover:text-primary transition-colors duration-fast px-3 py-2"
           >
             Log in
           </Link>
           <Link
             href="/signup"
-            className="text-sm bg-primary text-background font-medium px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            className="text-sm bg-primary text-white font-medium px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-all duration-fast"
           >
             Request access
           </Link>
         </div>
       </header>
 
-      <main className="px-6 max-w-5xl mx-auto">
-        {/* Hero - Authority + Tension */}
-        <section className="py-20 max-w-2xl">
-          <h1 className="text-4xl md:text-5xl font-semibold text-primary leading-[1.1] tracking-tight mb-6">
+      <main className="px-8 max-w-5xl mx-auto">
+        {/* Hero - Authority + Tension, generous whitespace */}
+        <section className="py-24 md:py-32 max-w-2xl">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-primary leading-[1.08] tracking-tight mb-8">
             Interrogate the market.
             <br />
             <span className="text-secondary">Reveal the structure.</span>
             <br />
             <span className="text-secondary">Act with proof.</span>
           </h1>
-          <p className="text-lg text-secondary leading-relaxed mb-4 max-w-xl">
+          <p className="text-lg md:text-xl text-secondary leading-relaxed mb-5 max-w-xl">
             GanoAlpha analyzes filings, earnings, supply chains, factor exposures, and live market signals
             <br className="hidden md:block" />
             to answer real investing questions — not essays.
           </p>
-          <p className="text-sm text-muted mb-8">
+          <p className="text-sm text-muted mb-10">
             Built for investors who want answers they can verify.
           </p>
           <div>
             <Link
               href="/signup"
-              className="inline-block bg-primary text-background font-medium px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+              className="inline-block bg-primary text-white font-medium px-7 py-3.5 rounded-lg hover:bg-primary/90 transition-all duration-fast shadow-soft hover:shadow-card"
             >
               Request access
             </Link>
-            <p className="text-xs text-muted mt-3">
+            <p className="text-xs text-muted mt-4">
               Private release — limited seats.
             </p>
           </div>
         </section>
 
         {/* Live Thinking Section */}
-        <section id="live-thinking-section" className="py-16 border-t border-border">
-          <h2 className="text-sm text-muted uppercase tracking-wider mb-10">
+        <section id="live-thinking-section" className="py-20 md:py-24 border-t border-border">
+          <h2 className="text-xs text-muted uppercase tracking-widest mb-12">
             What actually happens when you ask a question
           </h2>
 
@@ -237,29 +237,29 @@ export default function LandingPage() {
         </section>
 
         {/* Proof-first philosophy */}
-        <section className="py-16 border-t border-border">
-          <h2 className="text-xl font-medium text-primary mb-2">
+        <section className="py-20 md:py-24 border-t border-border">
+          <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-3 tracking-tight">
             No conclusions without receipts
           </h2>
-          <p className="text-secondary text-sm mb-10">
+          <p className="text-secondary mb-12">
             Every number is traceable.
           </p>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-10 md:gap-12">
             <div>
-              <p className="text-primary font-medium mb-2">Ranked, not rambled</p>
+              <p className="text-primary font-semibold mb-3">Ranked, not rambled</p>
               <p className="text-secondary text-sm leading-relaxed">
                 Every answer is a scored list. No essays. No filler.
               </p>
             </div>
             <div>
-              <p className="text-primary font-medium mb-2">Evidence attached</p>
+              <p className="text-primary font-semibold mb-3">Evidence attached</p>
               <p className="text-secondary text-sm leading-relaxed">
                 Betas, r², supply chain paths, SEC filings — always inspectable.
               </p>
             </div>
             <div>
-              <p className="text-primary font-medium mb-2">Multiple models</p>
+              <p className="text-primary font-semibold mb-3">Multiple models</p>
               <p className="text-secondary text-sm leading-relaxed">
                 Defensive and aggressive views. You see both — every time.
               </p>
@@ -267,16 +267,119 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Case Study - First Republic Bank */}
+        <section className="py-20 md:py-24 border-t border-border">
+          <h2 className="text-xs text-muted uppercase tracking-widest mb-12">
+            Case Study
+          </h2>
+
+          <div className="max-w-3xl">
+            <h3 className="text-2xl md:text-3xl font-semibold text-primary mb-4 tracking-tight">
+              First Republic Bank: The signal was there.
+            </h3>
+            <p className="text-secondary leading-relaxed mb-8">
+              Months before FRC collapsed, GANO&apos;s Merton probability of default model flagged the risk.
+              Not vibes. Not Twitter. A structural credit signal derived from equity volatility,
+              balance sheet data, and liability structure.
+            </p>
+
+            <div className="bg-surface border border-border rounded-xl overflow-hidden mb-8">
+              <div className="px-6 py-4 border-b border-border">
+                <p className="text-xs text-muted uppercase tracking-widest">Merton PD Timeline — FRC</p>
+              </div>
+              <div className="divide-y divide-border">
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs text-muted bg-background/50">
+                  <div className="col-span-4">Date</div>
+                  <div className="col-span-4 text-right">Merton PD (1Y)</div>
+                  <div className="col-span-4 text-right">Status</div>
+                </div>
+                <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                  <div className="col-span-4 text-sm text-primary">Jan 2023</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-primary">2.1%</div>
+                  <div className="col-span-4 text-right">
+                    <span className="text-xs px-2 py-1 rounded bg-success-muted text-success">Normal</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                  <div className="col-span-4 text-sm text-primary">Feb 2023</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-warning">8.7%</div>
+                  <div className="col-span-4 text-right">
+                    <span className="text-xs px-2 py-1 rounded bg-warning-muted text-warning">Elevated</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                  <div className="col-span-4 text-sm text-primary">Mar 2023</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-danger font-semibold">34.2%</div>
+                  <div className="col-span-4 text-right">
+                    <span className="text-xs px-2 py-1 rounded bg-danger-muted text-danger">Critical</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-danger-muted/30">
+                  <div className="col-span-4 text-sm text-primary font-medium">May 1, 2023</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-danger font-semibold">—</div>
+                  <div className="col-span-4 text-right">
+                    <span className="text-xs px-2 py-1 rounded bg-danger text-white">Seized by FDIC</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+              <div className="flex-1">
+                <p className="text-xs text-muted uppercase tracking-widest mb-3">What is Merton PD?</p>
+                <p className="text-sm text-secondary leading-relaxed">
+                  The Merton model treats a company&apos;s equity as a call option on its assets.
+                  When asset volatility rises and approaches the liability threshold,
+                  the probability of default increases. GANO calculates this daily for 3,000+ tickers.
+                </p>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-muted uppercase tracking-widest mb-3">Why it matters</p>
+                <p className="text-sm text-secondary leading-relaxed">
+                  Credit risk isn&apos;t just for bondholders. Equity investors who ignore
+                  balance sheet stress get blindsided. Merton PD surfaces the risk before
+                  it becomes a headline.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-20 md:py-24 border-t border-border text-center">
+          <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4 tracking-tight">
+            Stop reading essays. Start getting answers.
+          </h2>
+          <p className="text-secondary mb-10 max-w-xl mx-auto">
+            GanoAlpha is in private release. Request access to see how structured
+            market intelligence changes your workflow.
+          </p>
+          <Link
+            href="/signup"
+            className="inline-block bg-accent text-white font-medium px-8 py-4 rounded-lg hover:bg-accent-dark transition-all duration-fast shadow-soft hover:shadow-card"
+          >
+            Request access
+          </Link>
+        </section>
+
       </main>
 
-      {/* Footer */}
-      <footer className="px-6 py-8 border-t border-border">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted">
-            © 2025 GanoAlpha Inc.
-          </p>
-          <div className="flex items-center gap-6 text-sm text-muted">
-            {/* Legal links - placeholder for now */}
+      {/* Footer - Minimal, clean */}
+      <footer className="px-8 py-12 border-t border-border">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <p className="text-sm font-medium text-primary mb-1">GanoAlpha</p>
+            <p className="text-xs text-muted">
+              © 2025 GanoAlpha Inc. All rights reserved.
+            </p>
+          </div>
+          <div className="flex items-center gap-8 text-sm text-muted">
+            <Link href="/login" className="hover:text-secondary transition-colors duration-fast">
+              Log in
+            </Link>
+            <Link href="/signup" className="hover:text-secondary transition-colors duration-fast">
+              Request access
+            </Link>
           </div>
         </div>
       </footer>

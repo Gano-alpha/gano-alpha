@@ -1136,12 +1136,12 @@ export default function ChatPage() {
         </div>
 
         {messages.length === 0 ? (
-          /* Empty State */
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-            <p className="text-xs text-muted uppercase tracking-wider mb-4">
+          /* Empty State - Clean, focused, generous whitespace */
+          <div className="flex-1 flex flex-col items-center justify-center px-8 py-16">
+            <p className="text-xs text-muted uppercase tracking-widest mb-6">
               Ask a market question
             </p>
-            <h1 className="text-2xl font-medium text-primary mb-8 text-center">
+            <h1 className="text-3xl md:text-4xl font-semibold text-primary mb-10 text-center tracking-tight">
               What do you want to understand today?
             </h1>
 
@@ -1153,29 +1153,29 @@ export default function ChatPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={EXAMPLE_QUESTIONS[placeholderIndex]}
-                  className="w-full px-5 py-4 bg-surface border border-border rounded-xl text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all text-lg"
+                  className="w-full px-6 py-4 bg-surface border border-border rounded-xl text-primary text-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-fast shadow-soft"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-primary text-background rounded-lg hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-fast"
                 >
                   <Send size={20} />
                 </button>
               </div>
-              <p className="text-xs text-muted text-center mt-3">
+              <p className="text-xs text-muted text-center mt-4">
                 Ranked answers. Evidence attached. Powered by GANO&apos;s proprietary models.
               </p>
             </form>
 
-            <div className="mt-12 text-center">
-              <p className="text-secondary text-sm mb-4">Try asking:</p>
-              <div className="flex flex-wrap gap-2 justify-center max-w-xl">
+            <div className="mt-16 text-center">
+              <p className="text-muted text-sm mb-5">Try asking:</p>
+              <div className="flex flex-wrap gap-3 justify-center max-w-xl">
                 {EXAMPLE_QUESTIONS.slice(0, 4).map((q) => (
                   <button
                     key={q}
                     onClick={() => handleQuickQuestion(q)}
-                    className="px-4 py-2 bg-surface border border-border rounded-lg text-sm text-secondary hover:text-primary hover:border-muted transition-colors"
+                    className="px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-secondary hover:text-primary hover:border-border-dark hover:shadow-soft transition-all duration-fast"
                   >
                     {q}
                   </button>
@@ -1186,14 +1186,14 @@ export default function ChatPage() {
         ) : (
           /* Conversation */
           <>
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-              <div className="max-w-3xl mx-auto space-y-8">
+            <div className="flex-1 overflow-y-auto px-8 py-8">
+              <div className="max-w-3xl mx-auto space-y-10">
                 {messages.map((msg) => (
                   <div key={msg.id}>
                     {msg.role === "user" ? (
-                      /* User Message - Large, prominent */
-                      <div className="mb-6">
-                        <p className="text-xl text-primary font-medium">{msg.content}</p>
+                      /* User Message - Large, prominent, clear hierarchy */
+                      <div className="mb-8">
+                        <p className="text-xl md:text-2xl text-primary font-medium leading-snug tracking-tight">{msg.content}</p>
                       </div>
                     ) : msg.isLoading ? (
                       /* Loading State - Shows real tool progress when streaming, simple loader otherwise */
@@ -1234,8 +1234,8 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Follow-up Input - Fixed at bottom */}
-            <div className="border-t border-border bg-background/95 backdrop-blur-sm px-6 py-4">
+            {/* Follow-up Input - Fixed at bottom, refined spacing */}
+            <div className="border-t border-border bg-background/95 backdrop-blur-sm px-8 py-5">
               <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
                 <div className="relative">
                   <input
@@ -1243,12 +1243,12 @@ export default function ChatPage() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={followUpPlaceholder}
-                    className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                    className="w-full px-5 py-3.5 bg-surface border border-border rounded-lg text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-fast shadow-soft"
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || isLoading}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-background rounded-lg hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-fast"
                   >
                     {isLoading ? (
                       <Loader2 size={18} className="animate-spin" />

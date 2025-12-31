@@ -10,7 +10,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'rounded-xl border border-slate-200 bg-surface',
+      'rounded-lg border border-border bg-surface',
       elevated ? 'shadow-elevated' : 'shadow-card',
       className
     )}
