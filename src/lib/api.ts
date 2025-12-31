@@ -367,16 +367,26 @@ export interface StreamEvent {
 }
 
 /**
+ * History message format for multi-turn conversations
+ */
+export interface HistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
  * Send a chat query with streaming tool progress via SSE.
  *
  * @param getAccessToken - Function to get auth token
  * @param query - The user's query
+ * @param history - Optional conversation history for multi-turn context
  * @param onEvent - Callback for each SSE event
  * @returns Promise that resolves when stream completes
  */
 export async function sendChatQueryStreaming(
   getAccessToken: () => Promise<string | null>,
   query: string,
+  history: HistoryMessage[] | null,
   onEvent: (event: StreamEvent) => void
 ): Promise<void> {
   const token = await getAccessToken();
@@ -386,7 +396,11 @@ export async function sendChatQueryStreaming(
     return;
   }
 
-  const url = `${BACKEND_URL}/v1/chat/query/stream?q=${encodeURIComponent(query)}`;
+  // Build URL with query and optional history
+  let url = `${BACKEND_URL}/v1/chat/query/stream?q=${encodeURIComponent(query)}`;
+  if (history && history.length > 0) {
+    url += `&history=${encodeURIComponent(JSON.stringify(history))}`
+  }
 
   try {
     const response = await fetch(url, {

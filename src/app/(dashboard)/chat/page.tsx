@@ -18,6 +18,7 @@ import {
   type ContextSignal,
   type ContextWarning,
   type StreamEvent,
+  type HistoryMessage,
 } from "@/lib/api";
 import type { RenderBlock } from "@/types/render-blocks";
 
@@ -94,6 +95,91 @@ const EXAMPLE_QUESTIONS = [
   "China invades Taiwan — who's exposed?",
   "Explore NVDA's supply chain",
 ];
+
+// =============================================================================
+// Multi-turn conversation helpers
+// =============================================================================
+
+/**
+ * Summarize an assistant message for conversation history.
+ *
+ * Since assistant messages contain structured blocks (not plain text),
+ * we need to extract key information for GPT to understand context.
+ */
+function summarizeAssistantMessage(msg: Message): string {
+  // If message has blocks, summarize them
+  if (msg.blocks && msg.blocks.length > 0) {
+    const parts: string[] = [];
+
+    for (const block of msg.blocks) {
+      if (block.type === "narrative") {
+        // Include narrative text (truncated)
+        const text = (block as { text?: string }).text || "";
+        parts.push(text.slice(0, 200));
+      } else if (block.type === "ranked_list") {
+        // Extract top tickers from ranked list
+        const rows = (block as { rows?: Array<{ ticker?: string }> }).rows || [];
+        const tickers = rows.slice(0, 5).map(r => r.ticker).filter(Boolean).join(", ");
+        if (tickers) {
+          parts.push(`Showed ranked list: ${tickers}...`);
+        }
+      } else if (block.type === "split_compare") {
+        // Summarize comparison
+        const leftTitle = (block as { leftTitle?: string }).leftTitle || "Left";
+        const rightTitle = (block as { rightTitle?: string }).rightTitle || "Right";
+        parts.push(`Compared ${leftTitle} vs ${rightTitle}`);
+      } else if (block.type === "deep_dive") {
+        const ticker = (block as { ticker?: string }).ticker || "";
+        if (ticker) {
+          parts.push(`Deep dive on ${ticker}`);
+        }
+      }
+    }
+
+    if (parts.length > 0) {
+      return parts.join(" ");
+    }
+  }
+
+  // Fallback to structured response summary
+  if (msg.structuredResponse) {
+    const sr = msg.structuredResponse;
+    const parts: string[] = [];
+
+    if (sr.narrative) {
+      parts.push(sr.narrative.slice(0, 200));
+    }
+    if (sr.rankedResults && sr.rankedResults.length > 0) {
+      const tickers = sr.rankedResults.slice(0, 5).map(r => r.ticker).join(", ");
+      parts.push(`Top results: ${tickers}`);
+    }
+    if (sr.splitCompare) {
+      parts.push(`Compared ${sr.splitCompare.leftTitle} vs ${sr.splitCompare.rightTitle}`);
+    }
+
+    if (parts.length > 0) {
+      return parts.join(" ");
+    }
+  }
+
+  // Fallback to content
+  return msg.content || "[No content]";
+}
+
+/**
+ * Build conversation history from messages for multi-turn context.
+ * Keeps last 10 messages and summarizes assistant responses.
+ */
+function buildConversationHistory(messages: Message[]): HistoryMessage[] {
+  return messages
+    .slice(-10) // Last 10 messages
+    .map(m => ({
+      role: m.role,
+      content: m.role === "user"
+        ? m.content
+        : summarizeAssistantMessage(m)
+    }));
+}
 
 // =============================================================================
 // Follow-up placeholder suggestions
@@ -500,10 +586,13 @@ export default function ChatPage() {
         }
       };
 
-      // Start streaming
-      await sendChatQueryStreaming(getAccessToken, userMessage.content, handleEvent);
+      // Build conversation history for multi-turn context
+      const history = buildConversationHistory(messages);
+
+      // Start streaming with history
+      await sendChatQueryStreaming(getAccessToken, userMessage.content, history, handleEvent);
     },
-    [input, isLoading, messages.length, activeThreadId, getAccessToken, setMessages]
+    [input, isLoading, messages, activeThreadId, getAccessToken, setMessages]
   );
 
   // =============================================================================
