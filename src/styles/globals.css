@@ -3,119 +3,98 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 222 47% 11%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 215 16% 47%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 215 20% 65%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 239 84% 67%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 239 84% 67%;
-    --radius: 0.625rem;
-  }
-
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-canvas text-primary antialiased;
+    @apply bg-background text-primary antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Selection styling */
+  ::selection {
+    @apply bg-accent/20 text-primary;
   }
 }
 
 @layer components {
-  .signal-buy {
-    @apply text-buy bg-buy/10 border-buy/20;
-  }
-
-  .signal-sell {
-    @apply text-sell bg-sell/10 border-sell/20;
-  }
-
-  .signal-warning {
-    @apply text-warning bg-warning/10 border-warning/20;
-  }
-
+  /* Cards */
   .card-base {
-    @apply bg-surface rounded-xl border border-slate-200 shadow-card;
+    @apply bg-surface rounded-xl border border-border;
   }
 
   .card-elevated {
-    @apply bg-surface rounded-xl border border-slate-200 shadow-elevated;
+    @apply bg-surface rounded-xl border border-border shadow-card;
   }
 
+  /* Inputs */
   .input-base {
-    @apply w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-lg
+    @apply w-full px-4 py-3 bg-background border border-border rounded-lg
            text-primary placeholder:text-muted
-           focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
+           focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent
            transition-all duration-200;
   }
 
+  /* Buttons */
   .btn-primary {
     @apply inline-flex items-center justify-center px-4 py-2.5
-           bg-slate-900 text-white font-medium rounded-lg
-           hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/20
+           bg-accent text-white font-medium rounded-lg
+           hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent/20
            transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center px-4 py-2.5
-           bg-surface text-primary font-medium rounded-lg border border-slate-200
-           hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200
+           bg-surface text-primary font-medium rounded-lg border border-border
+           hover:bg-background focus:outline-none focus:ring-2 focus:ring-border
            transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center px-4 py-2.5
            text-secondary font-medium rounded-lg
-           hover:bg-slate-100 hover:text-primary
-           focus:outline-none focus:ring-2 focus:ring-slate-200
+           hover:bg-surface hover:text-primary
+           focus:outline-none
            transition-all duration-200;
   }
 
+  /* Badges / Chips */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-1 rounded text-xs font-medium;
   }
 
+  .badge-coral {
+    @apply bg-chip-coral text-accent;
+  }
+
+  .badge-teal {
+    @apply bg-chip-teal text-teal;
+  }
+
+  .badge-amber {
+    @apply bg-chip-amber text-warning;
+  }
+
+  /* Metric cards */
   .metric-card {
-    @apply card-base p-5 space-y-2;
+    @apply card-elevated p-5 space-y-2;
   }
 
   .metric-value {
-    @apply text-2xl font-semibold text-primary tracking-tight;
+    @apply text-2xl font-mono text-primary tracking-tight tabular-nums;
   }
 
   .metric-label {
-    @apply text-sm text-secondary;
-  }
-
-  .metric-change {
-    @apply text-sm font-medium;
+    @apply text-sm text-muted;
   }
 
   .metric-change-positive {
-    @apply metric-change text-buy;
+    @apply text-sm font-mono text-teal;
   }
 
   .metric-change-negative {
-    @apply metric-change text-sell;
+    @apply text-sm font-mono text-danger;
   }
 }
 
@@ -125,15 +104,60 @@
   }
 
   .animate-in {
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.2s ease-out;
   }
 
   .slide-in {
     animation: slideUp 0.3s ease-out;
   }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
 }
 
-/* Custom scrollbar */
+/* Keyframes for block animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar - Light theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -144,24 +168,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #d4d4d4;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
-
-/* React Flow customizations */
-.react-flow__node {
-  @apply shadow-card;
-}
-
-.react-flow__edge-path {
-  stroke-width: 2;
+  background: #a3a3a3;
 }
 
 /* Number formatting */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Typography */
+.font-mono {
+  font-family: var(--font-jetbrains), 'JetBrains Mono', monospace;
 }

@@ -1,325 +1,285 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import {
-  ArrowRight,
-  Network,
-  Zap,
-  Shield,
-  TrendingUp,
-  Bell,
-  BarChart3,
-  CheckCircle2,
-} from 'lucide-react'
+"use client";
 
-const features = [
-  {
-    icon: Network,
-    title: 'Supply Chain Intelligence',
-    description: 'See the hidden connections between companies. When Apple sneezes, know which suppliers catch a cold.',
-  },
-  {
-    icon: Zap,
-    title: 'Whisper Alerts',
-    description: 'Get notified when suppliers file 8-Ks that affect your holdings—before the market reacts.',
-  },
-  {
-    icon: Shield,
-    title: 'Macro Shock Simulator',
-    description: '"What if China invades Taiwan?" Simulate geopolitical events and see your portfolio impact instantly.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Portfolio X-Ray',
-    description: 'Discover hidden concentration risks. You might be 40% exposed to TSMC without knowing it.',
-  },
-]
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import Link from "next/link";
 
-const metrics = [
-  { value: '2,800+', label: 'Supply Chain Edges' },
-  { value: '1,200+', label: 'Companies Mapped' },
-  { value: '47', label: 'Alerts Sent (This Week)' },
-  { value: '-12%', label: 'Avg Drawdown Avoided' },
-]
+export default function LandingPage() {
+  const { isAuthenticated, loading } = useAuth();
+  const router = useRouter();
 
-const testimonials = [
-  {
-    quote: "Finally, a tool that shows me what I'm actually exposed to. The TSMC concentration warning saved me during the Taiwan tensions.",
-    author: 'Michael R.',
-    role: 'Portfolio Manager',
-  },
-  {
-    quote: "The whisper alerts are game-changing. I knew about the Skyworks delays before anyone else.",
-    author: 'Sarah K.',
-    role: 'Retail Investor',
-  },
-]
+  // Animation state for live thinking section
+  const [animationStep, setAnimationStep] = useState(0);
+  const [isInView, setIsInView] = useState(false);
 
-export default function HomePage() {
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push('/chat');
+    }
+  }, [isAuthenticated, loading, router]);
+
+  // Intersection observer to trigger animation when section is in view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isInView) {
+          setIsInView(true);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    const section = document.getElementById('live-thinking-section');
+    if (section) observer.observe(section);
+
+    return () => observer.disconnect();
+  }, [isInView]);
+
+  // Sequential animation steps
+  useEffect(() => {
+    if (!isInView) return;
+
+    const steps = [
+      { delay: 0 },      // Step 0: Question appears
+      { delay: 600 },    // Step 1: First check
+      { delay: 1200 },   // Step 2: Second check
+      { delay: 1800 },   // Step 3: Third check
+      { delay: 2400 },   // Step 4: Fourth check
+      { delay: 3000 },   // Step 5: Answer header
+      { delay: 3400 },   // Step 6: Row 1
+      { delay: 3700 },   // Step 7: Row 2
+      { delay: 4000 },   // Step 8: Row 3
+      { delay: 4300 },   // Step 9: Row 4
+      { delay: 4600 },   // Step 10: Row 5
+      { delay: 4900 },   // Step 11: Footer
+    ];
+
+    steps.forEach((step, index) => {
+      setTimeout(() => setAnimationStep(index + 1), step.delay);
+    });
+  }, [isInView]);
+
   return (
-    <div className="min-h-screen bg-canvas">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500 flex items-center justify-center">
-              <span className="text-white font-bold">G</span>
-            </div>
-            <span className="text-lg font-semibold text-primary">Gano Alpha</span>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto">
+        <div className="text-lg font-semibold text-primary tracking-tight">
+          GanoAlpha
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/login"
+            className="text-sm text-secondary hover:text-primary transition-colors px-3 py-2"
+          >
+            Log in
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Sign in</Button>
-            </Link>
-            <Link href="/signup">
-              <Button>Get Started</Button>
-            </Link>
-          </div>
+          <Link
+            href="/signup"
+            className="text-sm bg-primary text-background font-medium px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Request access
+          </Link>
         </div>
-      </nav>
+      </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-sm font-medium mb-6">
-              <Zap className="w-4 h-4" />
-              Supply Chain Intelligence Platform
-            </div>
-            <h1 className="text-5xl lg:text-6xl font-bold text-primary leading-tight">
-              See the connections
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-teal-500">
-                Wall Street misses
-              </span>
-            </h1>
-            <p className="mt-6 text-xl text-secondary max-w-2xl">
-              AI-powered supply chain intelligence that reveals hidden risks and opportunities
-              before they hit the market. Know when Apple&apos;s supplier stumbles—before Apple does.
-            </p>
-            <div className="mt-8 flex items-center gap-4">
-              <Link href="/signup">
-                <Button size="xl">
-                  Start Free Trial
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-              <Link href="/demo">
-                <Button variant="outline" size="xl">
-                  Watch Demo
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-muted">
-              No credit card required • 14-day free trial
+      <main className="px-6 max-w-5xl mx-auto">
+        {/* Hero - Authority + Tension */}
+        <section className="py-20 max-w-2xl">
+          <h1 className="text-4xl md:text-5xl font-semibold text-primary leading-[1.1] tracking-tight mb-6">
+            Interrogate the market.
+            <br />
+            <span className="text-secondary">Reveal the structure.</span>
+            <br />
+            <span className="text-secondary">Act with proof.</span>
+          </h1>
+          <p className="text-lg text-secondary leading-relaxed mb-4 max-w-xl">
+            GanoAlpha analyzes filings, earnings, supply chains, factor exposures, and live market signals
+            <br className="hidden md:block" />
+            to answer real investing questions — not essays.
+          </p>
+          <p className="text-sm text-muted mb-8">
+            Built for investors who want answers they can verify.
+          </p>
+          <div>
+            <Link
+              href="/signup"
+              className="inline-block bg-primary text-background font-medium px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Request access
+            </Link>
+            <p className="text-xs text-muted mt-3">
+              Private release — limited seats.
             </p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Metrics Bar */}
-      <section className="py-12 bg-slate-900">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="text-center">
-                <p className="text-3xl font-bold text-white">{metric.value}</p>
-                <p className="text-slate-400 mt-1">{metric.label}</p>
+        {/* Live Thinking Section */}
+        <section id="live-thinking-section" className="py-16 border-t border-border">
+          <h2 className="text-sm text-muted uppercase tracking-wider mb-10">
+            What actually happens when you ask a question
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Left: The process */}
+            <div className="space-y-8">
+              <div className={`transition-all duration-500 ${animationStep >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+                <p className="text-xs text-muted uppercase tracking-wider mb-2">The question</p>
+                <p className="text-xl text-primary font-medium">
+                  Who actually benefits if the Fed cuts rates?
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Features Grid */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-primary">
-              Your unfair advantage in the market
-            </h2>
-            <p className="mt-4 text-lg text-secondary max-w-2xl mx-auto">
-              Most investors react to news. You&apos;ll see it coming.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="p-8 rounded-2xl border border-slate-200 bg-surface hover:shadow-elevated transition-shadow"
-              >
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mb-6">
-                  <feature.icon className="w-6 h-6 text-indigo-600" />
+              {/* Progressive orchestration stack */}
+              <div className="space-y-0">
+                <div className={`flex items-start gap-3 transition-all duration-200 ${animationStep >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}>
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-teal mt-1.5"></div>
+                    <div className={`w-px h-6 bg-border transition-all duration-300 ${animationStep >= 3 ? 'opacity-100' : 'opacity-0'}`}></div>
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-sm text-primary font-medium">Macro detected</p>
+                    <p className="text-xs text-muted font-mono">rate_10y factor</p>
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold text-primary">{feature.title}</h3>
-                <p className="mt-3 text-secondary">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-primary">How Gano Alpha Works</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                title: 'We Parse Everything',
-                description: '10-Ks, 10-Qs, 8-Ks—we extract every supplier and customer mention from SEC filings in real-time.',
-              },
-              {
-                step: '02',
-                title: 'We Build the Graph',
-                description: 'Our AI maps the connections between 1,200+ companies, scoring relationship strength and dependency.',
-              },
-              {
-                step: '03',
-                title: 'You Get the Edge',
-                description: 'Receive alerts when supply chain events affect your holdings. Simulate shocks. Make informed decisions.',
-              },
-            ].map((item) => (
-              <div key={item.step} className="relative">
-                <div className="text-6xl font-bold text-indigo-100 mb-4">{item.step}</div>
-                <h3 className="text-xl font-semibold text-primary">{item.title}</h3>
-                <p className="mt-3 text-secondary">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {testimonials.map((testimonial, idx) => (
-              <div
-                key={idx}
-                className="p-8 rounded-2xl bg-surface border border-slate-200"
-              >
-                <p className="text-lg text-primary italic">&quot;{testimonial.quote}&quot;</p>
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-teal-400" />
+                <div className={`flex items-start gap-3 transition-all duration-200 ${animationStep >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}>
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-teal mt-1.5"></div>
+                    <div className={`w-px h-6 bg-border transition-all duration-300 ${animationStep >= 4 ? 'opacity-100' : 'opacity-0'}`}></div>
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-sm text-primary font-medium">Tool selected</p>
+                    <p className="text-xs text-muted font-mono">get_tickers_by_factor</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 transition-all duration-200 ${animationStep >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}>
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-teal mt-1.5"></div>
+                    <div className={`w-px h-6 bg-border transition-all duration-300 ${animationStep >= 5 ? 'opacity-100' : 'opacity-0'}`}></div>
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-sm text-primary font-medium">Filters applied</p>
+                    <p className="text-xs text-muted font-mono">r² ≥ 0.2, |β| ≥ 0.25</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 transition-all duration-200 ${animationStep >= 5 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}>
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-teal mt-1.5"></div>
+                    <div className={`w-px h-6 bg-border transition-all duration-300 ${animationStep >= 6 ? 'opacity-100' : 'opacity-0'}`}></div>
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-sm text-primary font-medium">Models consulted</p>
+                    <p className="text-xs text-muted font-mono">OG, Sniper</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 transition-all duration-200 ${animationStep >= 6 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}>
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-accent mt-1.5"></div>
+                  </div>
                   <div>
-                    <p className="font-medium text-primary">{testimonial.author}</p>
-                    <p className="text-sm text-secondary">{testimonial.role}</p>
+                    <p className="text-sm text-primary font-medium">Ranked output</p>
+                    <p className="text-xs text-muted font-mono">20 tickers, scored</p>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* Pricing Preview */}
-      <section className="py-20 px-6 bg-slate-900">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white">Simple, transparent pricing</h2>
-          <p className="mt-4 text-slate-400 max-w-2xl mx-auto">
-            Start with a 14-day free trial. No credit card required.
-          </p>
-
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              {
-                name: 'Free',
-                price: '$0',
-                features: ['5 stocks in watchlist', 'Basic supply chain view', 'Daily email digest'],
-              },
-              {
-                name: 'Pro',
-                price: '$49',
-                period: '/mo',
-                features: ['Unlimited watchlist', 'Real-time whisper alerts', 'Portfolio X-Ray', 'Shock simulator'],
-                popular: true,
-              },
-              {
-                name: 'Enterprise',
-                price: 'Custom',
-                features: ['API access', 'Custom integrations', 'Priority support', 'Dedicated account manager'],
-              },
-            ].map((plan) => (
-              <div
-                key={plan.name}
-                className={`p-6 rounded-xl ${
-                  plan.popular
-                    ? 'bg-indigo-600 ring-2 ring-indigo-400'
-                    : 'bg-slate-800'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="text-xs font-medium text-indigo-200 mb-2">MOST POPULAR</div>
-                )}
-                <h3 className="text-xl font-semibold text-white">{plan.name}</h3>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold text-white">{plan.price}</span>
-                  {plan.period && <span className="text-slate-400">{plan.period}</span>}
-                </div>
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
-                      <CheckCircle2 className="w-4 h-4 text-teal-400" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant={plan.popular ? 'secondary' : 'outline'}
-                  className="w-full mt-6"
-                >
-                  {plan.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
-                </Button>
+            {/* Right: The output */}
+            <div className={`bg-surface border border-border rounded-xl overflow-hidden transition-all duration-500 ${animationStep >= 6 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <div className="px-5 py-4 border-b border-border">
+                <p className="text-xs text-muted uppercase tracking-wider">Ranked by sensitivity, confidence, and evidence</p>
               </div>
-            ))}
+              <div className="divide-y divide-border">
+                <div className={`grid grid-cols-12 gap-2 px-5 py-2 text-xs text-muted bg-background/50 transition-opacity duration-300 ${animationStep >= 6 ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className="col-span-1">#</div>
+                  <div className="col-span-4">Ticker</div>
+                  <div className="col-span-4 text-right">Rate sensitivity</div>
+                  <div className="col-span-3 text-right">r²</div>
+                </div>
+                <div className={`grid grid-cols-12 gap-2 px-5 py-3 transition-all duration-300 ${animationStep >= 7 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+                  <div className="col-span-1 text-accent font-medium text-sm">1</div>
+                  <div className="col-span-4 font-mono text-sm text-primary font-medium">DDOG</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-primary">-0.275</div>
+                  <div className="col-span-3 text-right font-mono text-sm text-teal">0.38</div>
+                </div>
+                <div className={`grid grid-cols-12 gap-2 px-5 py-3 transition-all duration-300 ${animationStep >= 8 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+                  <div className="col-span-1 text-secondary text-sm">2</div>
+                  <div className="col-span-4 font-mono text-sm text-primary font-medium">AMAT</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-primary">-0.238</div>
+                  <div className="col-span-3 text-right font-mono text-sm text-teal">0.42</div>
+                </div>
+                <div className={`grid grid-cols-12 gap-2 px-5 py-3 transition-all duration-300 ${animationStep >= 9 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+                  <div className="col-span-1 text-secondary text-sm">3</div>
+                  <div className="col-span-4 font-mono text-sm text-primary font-medium">MU</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-primary">-0.196</div>
+                  <div className="col-span-3 text-right font-mono text-sm text-teal">0.54</div>
+                </div>
+                <div className={`grid grid-cols-12 gap-2 px-5 py-3 opacity-50 transition-all duration-300 ${animationStep >= 10 ? 'opacity-50 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+                  <div className="col-span-1 text-secondary text-sm">4</div>
+                  <div className="col-span-4 font-mono text-sm text-primary">AMD</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-primary">-0.170</div>
+                  <div className="col-span-3 text-right font-mono text-sm text-muted">0.31</div>
+                </div>
+                <div className={`grid grid-cols-12 gap-2 px-5 py-3 opacity-30 transition-all duration-300 ${animationStep >= 11 ? 'opacity-30 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+                  <div className="col-span-1 text-secondary text-sm">5</div>
+                  <div className="col-span-4 font-mono text-sm text-primary">TSLA</div>
+                  <div className="col-span-4 text-right font-mono text-sm text-primary">-0.132</div>
+                  <div className="col-span-3 text-right font-mono text-sm text-muted">0.30</div>
+                </div>
+              </div>
+              <div className={`px-5 py-3 bg-background/50 border-t border-border transition-all duration-300 ${animationStep >= 12 ? 'opacity-100' : 'opacity-0'}`}>
+                <p className="text-xs text-muted">
+                  + 15 more · Evidence available for each
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="py-20 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-primary">
-            Ready to see what you&apos;ve been missing?
+        {/* Proof-first philosophy */}
+        <section className="py-16 border-t border-border">
+          <h2 className="text-xl font-medium text-primary mb-2">
+            No conclusions without receipts
           </h2>
-          <p className="mt-4 text-lg text-secondary">
-            Join thousands of investors using supply chain intelligence to make smarter decisions.
+          <p className="text-secondary text-sm mb-10">
+            Every number is traceable.
           </p>
-          <div className="mt-8">
-            <Link href="/signup">
-              <Button size="xl">
-                Start Your Free Trial
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <div>
+              <p className="text-primary font-medium mb-2">Ranked, not rambled</p>
+              <p className="text-secondary text-sm leading-relaxed">
+                Every answer is a scored list. No essays. No filler.
+              </p>
+            </div>
+            <div>
+              <p className="text-primary font-medium mb-2">Evidence attached</p>
+              <p className="text-secondary text-sm leading-relaxed">
+                Betas, r², supply chain paths, SEC filings — always inspectable.
+              </p>
+            </div>
+            <div>
+              <p className="text-primary font-medium mb-2">Multiple models</p>
+              <p className="text-secondary text-sm leading-relaxed">
+                Defensive and aggressive views. You see both — every time.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+      </main>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-slate-200">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-teal-500 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">G</span>
-            </div>
-            <span className="font-semibold text-primary">Gano Alpha</span>
-          </div>
-          <div className="flex items-center gap-6 text-sm text-secondary">
-            <Link href="/privacy" className="hover:text-primary">Privacy</Link>
-            <Link href="/terms" className="hover:text-primary">Terms</Link>
-            <Link href="/contact" className="hover:text-primary">Contact</Link>
-          </div>
+      <footer className="px-6 py-8 border-t border-border">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted">
-            © 2024 Gano Alpha. All rights reserved.
+            © 2025 GanoAlpha Inc.
           </p>
+          <div className="flex items-center gap-6 text-sm text-muted">
+            {/* Legal links - placeholder for now */}
+          </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }
