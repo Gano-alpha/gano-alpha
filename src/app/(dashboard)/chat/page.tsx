@@ -619,8 +619,15 @@ export default function ChatPage() {
   // =============================================================================
   // DEPRECATED: Legacy transform - kept for backwards compatibility
   // =============================================================================
+  // Local type for legacy function (no longer imported from api.ts)
+  type LegacyToolResult = {
+    tool: string;
+    arguments: Record<string, unknown>;
+    result: Record<string, unknown>;
+  };
+
   function transformToolResultsToUI(
-    toolResults: ToolResult[],
+    toolResults: LegacyToolResult[],
     uiHint: string | null,
     intent: string | null
   ): StructuredResponse {
