@@ -51,8 +51,8 @@ export default function EarlyAccessPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-primary">You&apos;re on the list</h1>
           <p className="text-secondary text-sm">
-            {position && `You&apos;re #${position}. `}
-            We&apos;ll reach out when your access is ready.
+            
+            Thanks for your interest! We&apos;ll be in touch soon.
           </p>
         </div>
         <div className="pt-4">
