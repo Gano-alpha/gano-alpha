@@ -4,11 +4,14 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.gano.finance'
+
 export default function EarlyAccessPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [position, setPosition] = useState<number | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -16,12 +19,24 @@ export default function EarlyAccessPage() {
     setError('')
 
     try {
-      // For now, just simulate success
-      // TODO: Connect to actual waitlist endpoint (e.g., /api/waitlist)
-      await new Promise(resolve => setTimeout(resolve, 800))
+      const response = await fetch(`${API_BASE}/waitlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to join waitlist')
+      }
+
+      setPosition(data.position)
       setSubmitted(true)
-    } catch (err) {
-      setError('Something went wrong. Please try again.')
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -36,6 +51,7 @@ export default function EarlyAccessPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-primary">You&apos;re on the list</h1>
           <p className="text-secondary text-sm">
+            {position && `You&apos;re #${position}. `}
             We&apos;ll reach out when your access is ready.
           </p>
         </div>
