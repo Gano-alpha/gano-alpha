@@ -631,3 +631,196 @@ export async function getCurrentVersions(): Promise<CurrentVersions> {
   }
   return response.json();
 }
+
+// =============================================================================
+// Feedback API (B24) - In-App Feedback + Bug Reporting
+// =============================================================================
+
+export type FeedbackType = 'bug' | 'feature_request' | 'usability' | 'data_issue' | 'general' | 'praise';
+export type FeedbackPriority = 'critical' | 'high' | 'medium' | 'low' | 'unset';
+export type FeedbackStatus = 'new' | 'triaged' | 'in_progress' | 'resolved' | 'wont_fix' | 'duplicate';
+
+export interface FeedbackAttachment {
+  filename: string;
+  content_type: string;
+  data_base64: string;
+  size_bytes?: number;
+}
+
+export interface FeedbackSubmission {
+  feedback_type: FeedbackType;
+  title: string;
+  description: string;
+  email?: string;
+  user_id?: string;
+  page_url?: string;
+  user_agent?: string;
+  attachments?: FeedbackAttachment[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface FeedbackResponse {
+  success: boolean;
+  feedback_id: string;
+  message: string;
+  acknowledgement_sent: boolean;
+}
+
+export interface FeedbackItem {
+  feedback_id: string;
+  feedback_type: FeedbackType;
+  title: string;
+  description: string;
+  email: string | null;
+  user_id: string | null;
+  page_url: string | null;
+  status: FeedbackStatus;
+  priority: FeedbackPriority;
+  created_at: string;
+  updated_at: string;
+  has_attachments: boolean;
+  attachment_count: number;
+  metadata: Record<string, unknown> | null;
+  assigned_to: string | null;
+  resolution_notes: string | null;
+}
+
+export interface FeedbackStatusUpdate {
+  status: FeedbackStatus;
+  priority?: FeedbackPriority;
+  assigned_to?: string | null;
+  resolution_notes?: string | null;
+}
+
+export interface FeedbackStats {
+  total_count: number;
+  by_status: Record<string, number>;
+  by_type: Record<string, number>;
+  by_priority: Record<string, number>;
+  avg_resolution_hours: number | null;
+  unresolved_count: number;
+  this_week_count: number;
+}
+
+export interface FeedbackTypeInfo {
+  type_id: FeedbackType;
+  label: string;
+  description: string;
+  icon: string;
+}
+
+export interface FeedbackAttachmentMeta {
+  attachment_id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+  download_url: string;
+}
+
+/**
+ * Submit user feedback or bug report (public - no auth required)
+ */
+export async function submitFeedback(submission: FeedbackSubmission): Promise<FeedbackResponse> {
+  const response = await fetch(`${BACKEND_URL}/api/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(submission),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get available feedback types with descriptions (public - no auth required)
+ */
+export async function getFeedbackTypes(): Promise<FeedbackTypeInfo[]> {
+  const response = await fetch(`${BACKEND_URL}/api/feedback/types`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get feedback triage queue (requires admin/PM role)
+ */
+export async function getFeedbackTriageQueue(
+  getAccessToken: () => Promise<string | null>,
+  options?: {
+    status?: FeedbackStatus;
+    feedback_type?: FeedbackType;
+    priority?: FeedbackPriority;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<FeedbackItem[]> {
+  const params = new URLSearchParams();
+  if (options?.status) params.set('status', options.status);
+  if (options?.feedback_type) params.set('feedback_type', options.feedback_type);
+  if (options?.priority) params.set('priority', options.priority);
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.offset) params.set('offset', options.offset.toString());
+
+  const queryString = params.toString();
+  const endpoint = `/api/feedback/triage${queryString ? `?${queryString}` : ''}`;
+
+  return fetchWithAuth<FeedbackItem[]>(endpoint, getAccessToken);
+}
+
+/**
+ * Get feedback statistics (requires admin/PM role)
+ */
+export async function getFeedbackStats(
+  getAccessToken: () => Promise<string | null>
+): Promise<FeedbackStats> {
+  return fetchWithAuth<FeedbackStats>('/api/feedback/stats', getAccessToken);
+}
+
+/**
+ * Get single feedback item (requires admin/PM role)
+ */
+export async function getFeedbackItem(
+  getAccessToken: () => Promise<string | null>,
+  feedbackId: string
+): Promise<FeedbackItem> {
+  return fetchWithAuth<FeedbackItem>(`/api/feedback/${feedbackId}`, getAccessToken);
+}
+
+/**
+ * Update feedback status (requires admin/PM role)
+ */
+export async function updateFeedbackStatus(
+  getAccessToken: () => Promise<string | null>,
+  feedbackId: string,
+  update: FeedbackStatusUpdate
+): Promise<FeedbackItem> {
+  return fetchWithAuth<FeedbackItem>(`/api/feedback/${feedbackId}/status`, getAccessToken, {
+    method: 'PATCH',
+    body: JSON.stringify(update),
+  });
+}
+
+/**
+ * Get feedback attachments metadata (requires admin/PM role)
+ */
+export async function getFeedbackAttachments(
+  getAccessToken: () => Promise<string | null>,
+  feedbackId: string
+): Promise<FeedbackAttachmentMeta[]> {
+  return fetchWithAuth<FeedbackAttachmentMeta[]>(`/api/feedback/${feedbackId}/attachments`, getAccessToken);
+}
+
+/**
+ * Download feedback attachment (requires admin/PM role)
+ */
+export async function downloadFeedbackAttachment(
+  getAccessToken: () => Promise<string | null>,
+  feedbackId: string,
+  attachmentId: string
+): Promise<{ filename: string; content_type: string; data_base64: string }> {
+  return fetchWithAuth(`/api/feedback/${feedbackId}/attachments/${attachmentId}`, getAccessToken);
+}

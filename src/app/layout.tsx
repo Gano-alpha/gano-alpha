@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
+import { FeedbackButton } from "@/components/feedback";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -42,6 +43,7 @@ export default function RootLayout({
           <main className="min-h-screen flex flex-col">
             {children}
           </main>
+          <FeedbackButton />
         </AuthProvider>
         <Analytics />
       </body>
