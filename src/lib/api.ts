@@ -484,3 +484,112 @@ export async function analyzeTicker(
 
   return response.result || { ticker, error: 'No data' };
 }
+
+// =============================================================================
+// Signal Freshness API (A15) - SLA Compliance & Staleness Tracking
+// =============================================================================
+
+export interface SignalFreshnessStatus {
+  signal_date: string;
+  published_at: string | null;
+  hours_since_publish: number | null;
+  is_stale: boolean;
+  is_sla_compliant: boolean;
+  sla_status: 'ON_TIME' | 'LATE_BUT_BEFORE_OPEN' | 'LATE_AFTER_OPEN' | 'NOT_APPLICABLE';
+  total_signals: number;
+  enter_signals: number;
+  watch_signals: number;
+  avoid_signals: number;
+  status: string;
+}
+
+export interface SLAComplianceReport {
+  total_trading_days: number;
+  compliant_days: number;
+  compliance_rate: number;
+  avg_minutes_before_open: number;
+  delayed_days: number;
+  failed_days: number;
+  holiday_days: number;
+  start_date: string;
+  end_date: string;
+}
+
+export interface FreshnessAuditRecord {
+  signal_date: string;
+  published_at: string;
+  sla_deadline: string;
+  is_sla_compliant: boolean;
+  is_before_market_open: boolean;
+  minutes_before_market_open: number;
+  total_signals: number;
+  status: string;
+  sla_status: string;
+  delay_reason: string | null;
+}
+
+export interface StaleSignal {
+  signal_date: string;
+  ticker: string;
+  signal_tier: string;
+  direction: string;
+  published_at: string | null;
+  hours_since_publish: number | null;
+  staleness_reason: string | null;
+}
+
+/**
+ * Get current signal freshness status
+ */
+export async function getSignalFreshnessStatus(
+  getAccessToken: () => Promise<string | null>,
+  signalDate?: string
+): Promise<SignalFreshnessStatus> {
+  const params = signalDate ? `?signal_date=${signalDate}` : '';
+  return fetchWithAuth<SignalFreshnessStatus>(
+    `/api/signals/freshness${params}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get SLA compliance report for specified period
+ */
+export async function getSLAComplianceReport(
+  getAccessToken: () => Promise<string | null>,
+  days: number = 30
+): Promise<SLAComplianceReport> {
+  return fetchWithAuth<SLAComplianceReport>(
+    `/api/signals/freshness/sla?days=${days}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get freshness audit log
+ */
+export async function getFreshnessAudit(
+  getAccessToken: () => Promise<string | null>,
+  days: number = 30
+): Promise<FreshnessAuditRecord[]> {
+  return fetchWithAuth<FreshnessAuditRecord[]>(
+    `/api/signals/freshness/audit?days=${days}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get list of stale signals
+ */
+export async function getStaleSignals(
+  getAccessToken: () => Promise<string | null>,
+  signalDate?: string,
+  limit: number = 100
+): Promise<StaleSignal[]> {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (signalDate) params.set('signal_date', signalDate);
+  return fetchWithAuth<StaleSignal[]>(
+    `/api/signals/freshness/stale?${params.toString()}`,
+    getAccessToken
+  );
+}
