@@ -484,3 +484,225 @@ export async function analyzeTicker(
 
   return response.result || { ticker, error: 'No data' };
 }
+
+// =============================================================================
+// Fragility Alerts API (B2)
+// =============================================================================
+
+export type AlertType =
+  | 'fragility_spike'
+  | 'fragility_drop'
+  | 'regime_change'
+  | 'regime_upgrade'
+  | 'regime_downgrade'
+  | 'acceleration_warning'
+  | 'supply_chain_event'
+  | 'credit_stress'
+  | 'all_warnings';
+
+export type AlertFrequency = 'immediate' | 'daily_digest' | 'weekly_digest';
+export type ThresholdDirection = 'above' | 'below' | 'any';
+export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'skipped';
+export type AlertSeverity = 'critical' | 'high' | 'warning' | 'info';
+
+export interface AlertTypeInfo {
+  alert_type: AlertType;
+  label: string;
+  description: string;
+  requires_threshold: boolean;
+  requires_ticker: boolean;
+  default_threshold: number | null;
+}
+
+export interface AlertSubscriptionCreate {
+  alert_type: AlertType;
+  email: string;
+  threshold_value?: number;
+  threshold_direction?: ThresholdDirection;
+  ticker?: string;
+  frequency?: AlertFrequency;
+}
+
+export interface AlertSubscriptionUpdate {
+  threshold_value?: number;
+  threshold_direction?: ThresholdDirection;
+  frequency?: AlertFrequency;
+  enabled?: boolean;
+}
+
+export interface AlertSubscription {
+  subscription_id: string;
+  user_id: string;
+  email: string;
+  alert_type: AlertType;
+  threshold_value: number | null;
+  threshold_direction: string | null;
+  ticker: string | null;
+  frequency: AlertFrequency;
+  enabled: boolean;
+  trigger_count: number;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertHistoryItem {
+  alert_id: string;
+  alert_type: AlertType;
+  title: string;
+  message: string;
+  severity: AlertSeverity;
+  triggered_value: number | null;
+  threshold_value: number | null;
+  ticker: string | null;
+  metadata: Record<string, unknown> | null;
+  delivery_status: DeliveryStatus;
+  delivered_at: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface AlertStats {
+  total_subscriptions: number;
+  active_subscriptions: number;
+  total_alerts_sent: number;
+  alerts_by_type: Record<string, number>;
+  alerts_by_severity: Record<string, number>;
+}
+
+export interface UnsubscribeResult {
+  success: boolean;
+  subscription_id: string | null;
+  alert_type: string | null;
+  message: string;
+}
+
+/**
+ * Get available alert types (public - no auth required)
+ */
+export async function getAlertTypes(): Promise<AlertTypeInfo[]> {
+  const response = await fetch(`${BACKEND_URL}/api/alerts/types`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * One-click unsubscribe using token from email (public - no auth required)
+ */
+export async function unsubscribeByToken(token: string): Promise<UnsubscribeResult> {
+  const response = await fetch(`${BACKEND_URL}/api/alerts/unsubscribe/${token}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get user's alert subscriptions (requires auth)
+ */
+export async function getAlertSubscriptions(
+  getAccessToken: () => Promise<string | null>,
+  includeDisabled: boolean = false
+): Promise<AlertSubscription[]> {
+  const params = includeDisabled ? '?include_disabled=true' : '';
+  return fetchWithAuth<AlertSubscription[]>(`/api/alerts${params}`, getAccessToken);
+}
+
+/**
+ * Create a new alert subscription (requires auth)
+ */
+export async function createAlertSubscription(
+  getAccessToken: () => Promise<string | null>,
+  subscription: AlertSubscriptionCreate
+): Promise<AlertSubscription> {
+  return fetchWithAuth<AlertSubscription>('/api/alerts', getAccessToken, {
+    method: 'POST',
+    body: JSON.stringify(subscription),
+  });
+}
+
+/**
+ * Update an alert subscription (requires auth)
+ */
+export async function updateAlertSubscription(
+  getAccessToken: () => Promise<string | null>,
+  subscriptionId: string,
+  update: AlertSubscriptionUpdate
+): Promise<AlertSubscription> {
+  return fetchWithAuth<AlertSubscription>(`/api/alerts/${subscriptionId}`, getAccessToken, {
+    method: 'PATCH',
+    body: JSON.stringify(update),
+  });
+}
+
+/**
+ * Delete an alert subscription (requires auth)
+ */
+export async function deleteAlertSubscription(
+  getAccessToken: () => Promise<string | null>,
+  subscriptionId: string
+): Promise<{ message: string; subscription_id: string }> {
+  return fetchWithAuth(`/api/alerts/${subscriptionId}`, getAccessToken, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get user's alert history (requires auth)
+ */
+export async function getAlertHistory(
+  getAccessToken: () => Promise<string | null>,
+  options?: { limit?: number; offset?: number }
+): Promise<AlertHistoryItem[]> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.offset) params.set('offset', options.offset.toString());
+  const queryString = params.toString();
+  const endpoint = `/api/alerts/history${queryString ? `?${queryString}` : ''}`;
+  return fetchWithAuth<AlertHistoryItem[]>(endpoint, getAccessToken);
+}
+
+/**
+ * Mark an alert as read (requires auth)
+ */
+export async function markAlertRead(
+  getAccessToken: () => Promise<string | null>,
+  alertId: string
+): Promise<{ message: string; alert_id: string }> {
+  return fetchWithAuth(`/api/alerts/history/${alertId}/mark-read`, getAccessToken, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Get alert stats (requires admin/pm role)
+ */
+export async function getAlertStats(
+  getAccessToken: () => Promise<string | null>
+): Promise<AlertStats> {
+  return fetchWithAuth<AlertStats>('/api/alerts/admin/stats', getAccessToken);
+}
+
+/**
+ * Get pending alerts queue (requires admin/pm role)
+ */
+export async function getPendingAlerts(
+  getAccessToken: () => Promise<string | null>,
+  limit: number = 100
+): Promise<AlertHistoryItem[]> {
+  return fetchWithAuth<AlertHistoryItem[]>(`/api/alerts/admin/pending?limit=${limit}`, getAccessToken);
+}
+
+/**
+ * Manually trigger alert check (requires admin role)
+ */
+export async function triggerAlertCheck(
+  getAccessToken: () => Promise<string | null>
+): Promise<{ message: string; alerts_fired: number }> {
+  return fetchWithAuth('/api/alerts/admin/trigger-check', getAccessToken, {
+    method: 'POST',
+  });
+}

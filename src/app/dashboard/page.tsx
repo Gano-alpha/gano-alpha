@@ -8,6 +8,7 @@ import RegimeGauge from "@/components/dashboard/RegimeGauge";
 import SignalFeed from "@/components/dashboard/SignalFeed";
 import MertonCaseStudy from "@/components/dashboard/MertonCaseStudy";
 import GraphPlayground from "@/components/dashboard/GraphPlayground";
+import { AlertsPanel } from "@/components/alerts";
 import { LogOut } from "lucide-react";
 
 const ShockSimulator = dynamic(() => import("@/components/dashboard/ShockSimulator"), {
@@ -20,7 +21,7 @@ const ShockSimulator = dynamic(() => import("@/components/dashboard/ShockSimulat
 });
 
 export default function Dashboard() {
-  const { user, isAuthenticated, loading, logout } = useAuth();
+  const { user, isAuthenticated, loading, logout, getAccessToken } = useAuth();
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -81,6 +82,11 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-4">
             <RegimeGauge />
+            <AlertsPanel
+              getAccessToken={getAccessToken}
+              isAuthenticated={isAuthenticated}
+              onManageAlerts={() => router.push('/settings/alerts')}
+            />
             <button
               onClick={handleLogout}
               className="p-2 border border-border rounded hover:bg-surface transition-colors"
