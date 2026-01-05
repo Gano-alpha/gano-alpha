@@ -484,3 +484,181 @@ export async function analyzeTicker(
 
   return response.result || { ticker, error: 'No data' };
 }
+
+// =============================================================================
+// Track Record API (B1) - Public Performance Data
+// =============================================================================
+
+export interface TierSummary {
+  signal_tier: string;
+  total_signals: number;
+  completed_signals: number;
+  winners: number;
+  losers: number;
+  win_rate: number | null;
+  avg_return_pct: number | null;
+  median_return_pct: number | null;
+  best_return_pct: number | null;
+  worst_return_pct: number | null;
+}
+
+export interface TrackRecordSummary {
+  period_days: number;
+  period_start: string;
+  period_end: string;
+  total_signals: number;
+  completed_signals: number;
+  overall_win_rate: number | null;
+  overall_avg_return_pct: number | null;
+  by_tier: TierSummary[];
+}
+
+export interface MonthlyPerformance {
+  month: string;
+  total_signals: number;
+  completed: number;
+  winners: number;
+  win_rate: number | null;
+  avg_return_pct: number | null;
+}
+
+export interface SignalOutcome {
+  signal_date: string;
+  ticker: string;
+  company_name: string | null;
+  sector: string | null;
+  signal_tier: string;
+  direction: string;
+  win_probability: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  exit_date: string | null;
+  return_pct: number | null;
+  outcome: 'WIN' | 'LOSS' | 'PENDING';
+  days_held: number | null;
+}
+
+export interface BacktestMetrics {
+  as_of_date: string;
+  horizon: string;
+  accuracy_pct: number;
+  sharpe_ratio: number;
+  max_drawdown_pct: number;
+  alpha_vs_spy_pct: number;
+  total_trades: number;
+}
+
+export interface MethodologyInfo {
+  gano_model_name: string;
+  gano_model_version: string;
+  strategy_type: string;
+  description: string;
+  risk_management: {
+    stop_loss: string;
+    take_profit: string;
+    max_positions: number;
+    holding_period: string;
+  };
+  signal_tiers: Record<string, string>;
+  data_sources: string[];
+  methodology_url: string;
+  last_updated: string;
+}
+
+export interface TrackRecordQuickStats {
+  total_signals: number;
+  first_signal_date: string | null;
+  last_signal_date: string | null;
+  unique_tickers: number;
+  enter_win_rate: number | null;
+  enter_avg_return: number | null;
+  data_months: number;
+}
+
+/**
+ * Get track record summary (public - no auth required)
+ */
+export async function getTrackRecordSummary(
+  days: number = 365,
+  signalTier?: string
+): Promise<TrackRecordSummary> {
+  const params = new URLSearchParams({ days: days.toString() });
+  if (signalTier) params.set('signal_tier', signalTier);
+
+  const response = await fetch(`${BACKEND_URL}/api/track-record?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get monthly performance breakdown (public - no auth required)
+ */
+export async function getMonthlyPerformance(
+  months: number = 12
+): Promise<MonthlyPerformance[]> {
+  const response = await fetch(`${BACKEND_URL}/api/track-record/monthly?months=${months}`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get individual signal outcomes (public - no auth required)
+ */
+export async function getSignalOutcomes(
+  days: number = 180,
+  signalTier?: string,
+  outcome?: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<SignalOutcome[]> {
+  const params = new URLSearchParams({
+    days: days.toString(),
+    limit: limit.toString(),
+    offset: offset.toString(),
+  });
+  if (signalTier) params.set('signal_tier', signalTier);
+  if (outcome) params.set('outcome', outcome);
+
+  const response = await fetch(`${BACKEND_URL}/api/track-record/signals?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get backtest metrics (public - no auth required)
+ */
+export async function getBacktestMetrics(): Promise<BacktestMetrics[]> {
+  const response = await fetch(`${BACKEND_URL}/api/track-record/metrics`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get methodology info (public - no auth required)
+ */
+export async function getMethodologyInfo(): Promise<MethodologyInfo> {
+  const response = await fetch(`${BACKEND_URL}/api/track-record/methodology`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get quick stats for header (public - no auth required)
+ */
+export async function getTrackRecordQuickStats(): Promise<TrackRecordQuickStats> {
+  const response = await fetch(`${BACKEND_URL}/api/track-record/stats`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
