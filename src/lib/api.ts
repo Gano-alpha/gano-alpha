@@ -484,3 +484,200 @@ export async function analyzeTicker(
 
   return response.result || { ticker, error: 'No data' };
 }
+
+// =============================================================================
+// Product Analytics API (B6)
+// =============================================================================
+
+export interface DailyActiveUsers {
+  activity_date: string;
+  dau: number;
+  total_sessions: number;
+  total_events: number;
+  avg_session_duration_seconds: number;
+}
+
+export interface WeeklyActiveUsers {
+  week_start: string;
+  wau: number;
+}
+
+export interface MonthlyActiveUsers {
+  month_start: string;
+  mau: number;
+}
+
+export interface RetentionData {
+  days_since_signup: number;
+  total_users: number;
+  active_users: number;
+  retention_rate_pct: number;
+}
+
+export interface RetentionBySource {
+  source: string;
+  days_since_signup: number;
+  total_users: number;
+  active_users: number;
+  retention_rate_pct: number;
+}
+
+export interface CohortData {
+  cohort_date: string;
+  day_0: number | null;
+  day_1: number | null;
+  day_3: number | null;
+  day_7: number | null;
+  day_14: number | null;
+  day_30: number | null;
+}
+
+export interface FunnelStep {
+  step_order: number;
+  step_key: string;
+  step_name: string;
+  users_completed: number;
+  prev_step_users: number | null;
+  step_conversion_pct: number | null;
+  avg_time_to_step_seconds: number | null;
+}
+
+export interface FeatureUsage {
+  feature_key: string;
+  total_usage: number;
+  unique_users: number;
+  avg_duration_seconds: number | null;
+}
+
+export interface EngagementScore {
+  user_id: string;
+  email: string;
+  engagement_score: number;
+  last_active_at: string;
+}
+
+/**
+ * Get daily active users (requires analyst role)
+ */
+export async function getDailyActiveUsers(
+  getAccessToken: () => Promise<string | null>,
+  options?: { start_date?: string; end_date?: string }
+): Promise<DailyActiveUsers[]> {
+  const params = new URLSearchParams();
+  if (options?.start_date) params.set('start_date', options.start_date);
+  if (options?.end_date) params.set('end_date', options.end_date);
+  const queryString = params.toString();
+  return fetchWithAuth<DailyActiveUsers[]>(
+    `/api/analytics/dau${queryString ? `?${queryString}` : ''}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get weekly active users (requires analyst role)
+ */
+export async function getWeeklyActiveUsers(
+  getAccessToken: () => Promise<string | null>,
+  weeks: number = 12
+): Promise<WeeklyActiveUsers[]> {
+  return fetchWithAuth<WeeklyActiveUsers[]>(
+    `/api/analytics/wau?weeks=${weeks}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get monthly active users (requires analyst role)
+ */
+export async function getMonthlyActiveUsers(
+  getAccessToken: () => Promise<string | null>,
+  months: number = 12
+): Promise<MonthlyActiveUsers[]> {
+  return fetchWithAuth<MonthlyActiveUsers[]>(
+    `/api/analytics/mau?months=${months}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get retention rates (requires analyst role)
+ */
+export async function getRetentionRates(
+  getAccessToken: () => Promise<string | null>
+): Promise<RetentionData[]> {
+  return fetchWithAuth<RetentionData[]>('/api/analytics/retention', getAccessToken);
+}
+
+/**
+ * Get retention by acquisition source (requires analyst role)
+ */
+export async function getRetentionBySource(
+  getAccessToken: () => Promise<string | null>,
+  days: number[] = [7, 30]
+): Promise<RetentionBySource[]> {
+  const params = days.map(d => `days=${d}`).join('&');
+  return fetchWithAuth<RetentionBySource[]>(
+    `/api/analytics/retention/by-source?${params}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get cohort retention matrix (requires analyst role)
+ */
+export async function getCohortRetention(
+  getAccessToken: () => Promise<string | null>,
+  options?: { start_date?: string; end_date?: string }
+): Promise<CohortData[]> {
+  const params = new URLSearchParams();
+  if (options?.start_date) params.set('start_date', options.start_date);
+  if (options?.end_date) params.set('end_date', options.end_date);
+  const queryString = params.toString();
+  return fetchWithAuth<CohortData[]>(
+    `/api/analytics/cohort${queryString ? `?${queryString}` : ''}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get conversion funnel (requires analyst role)
+ */
+export async function getConversionFunnel(
+  getAccessToken: () => Promise<string | null>
+): Promise<FunnelStep[]> {
+  return fetchWithAuth<FunnelStep[]>('/api/analytics/funnel', getAccessToken);
+}
+
+/**
+ * Get feature usage stats (requires analyst role)
+ */
+export async function getFeatureUsage(
+  getAccessToken: () => Promise<string | null>,
+  options?: { days?: number; limit?: number }
+): Promise<FeatureUsage[]> {
+  const params = new URLSearchParams();
+  if (options?.days) params.set('days', options.days.toString());
+  if (options?.limit) params.set('limit', options.limit.toString());
+  const queryString = params.toString();
+  return fetchWithAuth<FeatureUsage[]>(
+    `/api/analytics/features${queryString ? `?${queryString}` : ''}`,
+    getAccessToken
+  );
+}
+
+/**
+ * Get engagement scores (requires admin role)
+ */
+export async function getEngagementScores(
+  getAccessToken: () => Promise<string | null>,
+  options?: { limit?: number; order?: 'asc' | 'desc' }
+): Promise<EngagementScore[]> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.order) params.set('order', options.order);
+  const queryString = params.toString();
+  return fetchWithAuth<EngagementScore[]>(
+    `/api/analytics/engagement/scores${queryString ? `?${queryString}` : ''}`,
+    getAccessToken
+  );
+}
