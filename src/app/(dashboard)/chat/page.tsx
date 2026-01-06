@@ -7,6 +7,7 @@ import { ContextPanel } from "@/components/chat/ContextPanel";
 import { AssistantMessage } from "@/components/chat/AssistantMessage";
 import { MCPToolAnimation } from "@/components/chat/MCPToolAnimation";
 import { TickerDeepDiveBlock, BlockRenderer } from "@/components/blocks";
+import { FinancialDisclaimer } from "@/components/legal";
 import { generateThreadTitle, getThreadChips, type ThreadChipType } from "@/lib/block-state";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -1167,6 +1168,9 @@ export default function ChatPage() {
                 Ranked answers. Evidence attached. Powered by GANO&apos;s proprietary models.
               </p>
             </form>
+
+            {/* Financial Disclaimer */}
+            <FinancialDisclaimer variant="compact" className="mt-8" />
 
             <div className="mt-16 text-center">
               <p className="text-muted text-sm mb-5">Try asking:</p>

@@ -8,6 +8,7 @@ import RegimeGauge from "@/components/dashboard/RegimeGauge";
 import SignalFeed from "@/components/dashboard/SignalFeed";
 import MertonCaseStudy from "@/components/dashboard/MertonCaseStudy";
 import GraphPlayground from "@/components/dashboard/GraphPlayground";
+import { SignalDisclaimer } from "@/components/legal";
 import { LogOut } from "lucide-react";
 
 const ShockSimulator = dynamic(() => import("@/components/dashboard/ShockSimulator"), {
@@ -135,6 +136,9 @@ export default function Dashboard() {
           <SignalFeed />
         </div>
       </section>
+
+      {/* Signal Disclaimer - Required for pages showing trading signals */}
+      <SignalDisclaimer className="max-w-4xl mx-auto" />
 
       {/* SECTION 3: STATS */}
       <section className="space-y-12">
