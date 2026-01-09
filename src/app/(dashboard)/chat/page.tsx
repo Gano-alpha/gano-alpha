@@ -1103,6 +1103,7 @@ export default function ChatPage() {
 
       {/* LEFT: Thread List */}
       <div
+        data-tour="thread-list"
         className={`
           fixed md:static inset-y-0 left-0 z-50
           w-64 flex-shrink-0 transform transition-transform duration-200
@@ -1146,7 +1147,7 @@ export default function ChatPage() {
             </h1>
 
             <form onSubmit={handleSubmit} className="w-full max-w-2xl">
-              <div className="relative">
+              <div className="relative" data-tour="chat-input">
                 <input
                   ref={inputRef}
                   type="text"
@@ -1168,7 +1169,7 @@ export default function ChatPage() {
               </p>
             </form>
 
-            <div className="mt-16 text-center">
+            <div className="mt-16 text-center" data-tour="example-questions">
               <p className="text-muted text-sm mb-5">Try asking:</p>
               <div className="flex flex-wrap gap-3 justify-center max-w-xl">
                 {EXAMPLE_QUESTIONS.slice(0, 4).map((q) => (
@@ -1264,7 +1265,7 @@ export default function ChatPage() {
       </div>
 
       {/* RIGHT: Context Panel */}
-      <div className="w-72 flex-shrink-0 hidden lg:block">
+      <div className="w-72 flex-shrink-0 hidden lg:block" data-tour="context-panel">
         <ContextPanel
           macroContext={macroContext}
           signals={signals}
