@@ -91,7 +91,23 @@ const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 export function useOnboarding() {
   const context = useContext(OnboardingContext);
   if (!context) {
-    throw new Error('useOnboarding must be used within OnboardingProvider');
+    // Return a safe fallback instead of throwing to handle edge cases
+    // during route transitions between auth and dashboard layouts
+    return {
+      state: {
+        hasCompletedTour: true,
+        hasSeenWelcome: true,
+        tourStep: 0,
+        hasAcceptedToS: false,
+        tosAcceptedAt: null,
+      },
+      startTour: () => {},
+      skipTour: () => {},
+      resetTour: () => {},
+      showWelcome: false,
+      dismissWelcome: () => {},
+      acceptToS: () => {},
+    };
   }
   return context;
 }
