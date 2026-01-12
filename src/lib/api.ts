@@ -484,3 +484,150 @@ export async function analyzeTicker(
 
   return response.result || { ticker, error: 'No data' };
 }
+
+// =============================================================================
+// Legal API (B19) - Terms of Service & Privacy Policy
+// =============================================================================
+
+export type DocumentType = 'terms_of_service' | 'privacy_policy';
+
+export interface LegalDocument {
+  document_type: DocumentType;
+  version: string;
+  effective_date: string;
+  title: string;
+  content: string;
+  last_updated: string;
+}
+
+export interface AcceptanceRequest {
+  user_id: string;
+  tos_version: string;
+  privacy_version: string;
+  ip_address?: string;
+  user_agent?: string;
+}
+
+export interface AcceptanceRecord {
+  user_id: string;
+  tos_version: string;
+  tos_accepted_at: string | null;
+  privacy_version: string;
+  privacy_accepted_at: string | null;
+  is_current: boolean;
+}
+
+export interface AcceptanceResponse {
+  success: boolean;
+  user_id: string;
+  tos_version: string;
+  privacy_version: string;
+  accepted_at: string;
+  message: string;
+}
+
+export interface DocumentVersion {
+  document_type: DocumentType;
+  version: string;
+  effective_date: string;
+  is_current: boolean;
+}
+
+export interface DataRetentionInfo {
+  data_category: string;
+  description: string;
+  retention_period: string;
+  legal_basis: string;
+  can_delete: boolean;
+}
+
+export interface CurrentVersions {
+  tos_version: string;
+  privacy_version: string;
+  effective_date: string;
+}
+
+/**
+ * Get Terms of Service (public - no auth required)
+ */
+export async function getTermsOfService(version?: string): Promise<LegalDocument> {
+  const params = version ? `?version=${version}` : '';
+  const response = await fetch(`${BACKEND_URL}/api/legal/terms${params}`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get Privacy Policy (public - no auth required)
+ */
+export async function getPrivacyPolicy(version?: string): Promise<LegalDocument> {
+  const params = version ? `?version=${version}` : '';
+  const response = await fetch(`${BACKEND_URL}/api/legal/privacy${params}`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Record user acceptance of ToS and Privacy Policy (public - no auth required)
+ * Only requires user_id in the request body
+ */
+export async function acceptTerms(request: AcceptanceRequest): Promise<AcceptanceResponse> {
+  const response = await fetch(`${BACKEND_URL}/api/legal/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get user's acceptance status (public - no auth required)
+ * Used to check if user needs to accept updated terms
+ */
+export async function getAcceptanceStatus(userId: string): Promise<AcceptanceRecord> {
+  const response = await fetch(`${BACKEND_URL}/api/legal/acceptance/${encodeURIComponent(userId)}`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get all document versions (public - no auth required)
+ */
+export async function getDocumentVersions(): Promise<DocumentVersion[]> {
+  const response = await fetch(`${BACKEND_URL}/api/legal/versions`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get data retention info (public - no auth required)
+ */
+export async function getDataRetentionInfo(): Promise<DataRetentionInfo[]> {
+  const response = await fetch(`${BACKEND_URL}/api/legal/data-retention`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get current ToS and Privacy Policy versions (public - no auth required)
+ */
+export async function getCurrentVersions(): Promise<CurrentVersions> {
+  const response = await fetch(`${BACKEND_URL}/api/legal/current-versions`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
