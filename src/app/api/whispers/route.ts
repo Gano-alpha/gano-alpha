@@ -18,40 +18,62 @@ interface Whisper {
   read: boolean
 }
 
+interface WhispersResponse {
+  data: Whisper[]
+  isDemo: boolean
+  total: number
+  limit: number
+  offset: number
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const limit = parseInt(searchParams.get('limit') || '20')
-  const ticker = searchParams.get('ticker') // Filter by affected ticker
-  const severity = searchParams.get('severity') // Filter by severity
+  const ticker = searchParams.get('ticker')
+  const severity = searchParams.get('severity')
 
-  // Forward Authorization header from client
   const authHeader = request.headers.get('Authorization')
 
   try {
-    let url = `${BACKEND_URL}/api/whispers?limit=${limit}`
-    if (ticker) url += `&ticker=${ticker}`
-    if (severity) url += `&severity=${severity}`
+    // Build URL for new /v1/whispers endpoint
+    const url = new URL(`${BACKEND_URL}/v1/whispers`)
+    url.searchParams.set('limit', String(limit))
+    if (ticker) url.searchParams.set('ticker', ticker)
+    if (severity) url.searchParams.set('severity', severity)
 
-    // Build headers with auth forwarding
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (authHeader) {
       headers['Authorization'] = authHeader
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       headers,
-      next: { revalidate: 60 },
+      cache: 'no-store',
     })
 
     if (response.ok) {
-      const data = await response.json()
+      const data: WhispersResponse = await response.json()
+      // Backend now returns the correct shape with isDemo flag
       return NextResponse.json(data)
     }
 
-    return NextResponse.json(getMockWhispers(limit, ticker, severity))
+    // Return demo data with indicator when backend unavailable
+    return NextResponse.json({
+      data: getMockWhispers(limit, ticker, severity),
+      isDemo: true,
+      total: 6,
+      limit,
+      offset: 0,
+    })
   } catch (error) {
     console.error('Error fetching whispers:', error)
-    return NextResponse.json(getMockWhispers(limit, ticker, severity))
+    return NextResponse.json({
+      data: getMockWhispers(limit, ticker, severity),
+      isDemo: true,
+      total: 6,
+      limit,
+      offset: 0,
+    })
   }
 }
 
