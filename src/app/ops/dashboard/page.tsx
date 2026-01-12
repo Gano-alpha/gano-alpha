@@ -185,7 +185,7 @@ export default function OpsDashboardPage() {
                 {activeAlerts.map(alert => (
                   <div key={alert.alert_id} className="flex items-center justify-between py-2 border-b last:border-0">
                     <div className="flex items-center gap-3">
-                      <Badge variant={alert.severity === 'critical' ? 'destructive' : 'outline'}>
+                      <Badge variant={alert.severity === 'critical' ? 'danger' : 'outline'}>
                         {alert.severity}
                       </Badge>
                       <span className="text-sm">{alert.message}</span>
@@ -367,7 +367,7 @@ function FreshnessRow({ item }: { item: DataFreshness }) {
       </td>
       <td className="py-3">
         {item.is_stale ? (
-          <Badge variant="destructive">STALE</Badge>
+          <Badge variant="danger">STALE</Badge>
         ) : (
           <Badge variant="outline" className="bg-green-100 text-green-800">Fresh</Badge>
         )}

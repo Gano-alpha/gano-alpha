@@ -268,7 +268,7 @@ function MetricCard({
         <div className="flex items-center justify-between">
           <div className="text-muted-foreground">{icon}</div>
           {trend && (
-            <Badge variant={trend === 'up' ? 'default' : 'destructive'} className="text-xs">
+            <Badge variant={trend === 'up' ? 'success' : 'danger'} className="text-xs">
               {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             </Badge>
           )}

@@ -125,7 +125,7 @@ export function FeedbackButton() {
               <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
               <h3 className="text-lg font-semibold">Thank you!</h3>
               <p className="text-muted-foreground text-center mt-2">
-                Your feedback has been submitted. We'll review it shortly.
+                Your feedback has been submitted. We&apos;ll review it shortly.
               </p>
             </div>
           </FeedbackModal>

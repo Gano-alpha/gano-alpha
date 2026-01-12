@@ -299,8 +299,8 @@ export default function FragilityDashboardPage() {
                   <div className="flex justify-between text-sm mb-1">
                     <span>Sensitivity Level</span>
                     <Badge variant={
-                      tickerResult.sensitivity === 'HIGH' ? 'destructive' :
-                      tickerResult.sensitivity === 'MEDIUM' ? 'outline' : 'secondary'
+                      tickerResult.sensitivity === 'HIGH' ? 'danger' :
+                      tickerResult.sensitivity === 'MEDIUM' ? 'warning' : 'secondary'
                     }>
                       {tickerResult.sensitivity}
                     </Badge>

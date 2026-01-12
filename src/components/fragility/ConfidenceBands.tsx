@@ -153,7 +153,7 @@ export function ConfidenceBands({ data, showDetails = true }: ConfidenceBandsPro
                         : `${source.hours_old.toFixed(0)}h ago`}
                     </span>
                     {source.is_stale && (
-                      <Badge variant="destructive" className="ml-2 text-xs">
+                      <Badge variant="danger" className="ml-2 text-xs">
                         Stale
                       </Badge>
                     )}

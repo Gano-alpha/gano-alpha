@@ -21,6 +21,7 @@ import {
   X,
   Loader2,
   Calendar,
+  Network,
 } from 'lucide-react'
 
 // Default tier when backend doesn't provide one
