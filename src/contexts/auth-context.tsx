@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user && !isPublicRoute && pathname !== '/') {
       router.push('/login')
     } else if (user && isPublicRoute) {
-      router.push('/chat')
+      router.push('/home')
     }
   }, [user, loading, pathname, router])
 

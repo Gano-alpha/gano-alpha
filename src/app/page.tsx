@@ -15,7 +15,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.push('/chat');
+      router.push('/home');
     }
   }, [isAuthenticated, loading, router]);
 

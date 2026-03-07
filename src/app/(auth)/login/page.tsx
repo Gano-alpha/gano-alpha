@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const result = await login(email, password)
       if (result.success) {
-        router.push('/chat')
+        router.push('/home')
       } else {
         setError(result.error || 'Invalid email or password')
       }
