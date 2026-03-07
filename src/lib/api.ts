@@ -3,7 +3,7 @@
  * Handles authenticated requests to the backend
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.ganoalpha.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend';
 
 export interface Signal {
   ticker: string;

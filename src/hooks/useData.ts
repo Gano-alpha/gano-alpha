@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.ganoalpha.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend';
 
 interface UseDataResult<T> {
   data: T | null;

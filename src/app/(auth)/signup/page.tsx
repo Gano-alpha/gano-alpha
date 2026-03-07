@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.ganoalpha.com'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend'
 
 export default function EarlyAccessPage() {
   const [email, setEmail] = useState('')

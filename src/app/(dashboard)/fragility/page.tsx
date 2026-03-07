@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.ganoalpha.com';
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend';
 
 // Types matching v3.0 backend API
 interface FragilityComponent {

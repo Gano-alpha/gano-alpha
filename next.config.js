@@ -4,6 +4,14 @@ const nextConfig = {
   images: {
     domains: ['logo.clearbit.com'],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/backend/:path*',
+        destination: 'https://api.ganoalpha.com/:path*',
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig
