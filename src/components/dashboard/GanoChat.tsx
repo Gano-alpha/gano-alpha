@@ -10,7 +10,7 @@ import {
 import type { Message, StructuredResponse } from "./types";
 import { EXCLUDED_TICKER_WORDS } from "./types";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend';
+const BACKEND_URL = '/backend';
 
 // =============================================================================
 // Utility functions

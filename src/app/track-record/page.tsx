@@ -47,7 +47,7 @@ interface TrackRecordData {
   recent_signals: SignalOutcome[];
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
+const API_BASE = '/backend';
 
 export default function TrackRecordPage() {
   const [data, setData] = useState<TrackRecordData | null>(null);

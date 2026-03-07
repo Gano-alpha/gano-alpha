@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
+const API_BASE = '/backend';
 
 // Types matching backend API
 interface PhaseProgress {

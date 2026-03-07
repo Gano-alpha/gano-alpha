@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronRight, ExternalLink, Info
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
+const API_BASE = '/backend';
 
 interface MethodologySection {
   slug: string;

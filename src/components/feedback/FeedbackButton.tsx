@@ -5,7 +5,7 @@ import { MessageSquarePlus, X, Send, Camera, Loader2, CheckCircle } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
+const API_BASE = '/backend';
 
 type FeedbackType = 'bug' | 'feature' | 'question' | 'praise' | 'other';
 type Priority = 'low' | 'medium' | 'high' | 'critical';

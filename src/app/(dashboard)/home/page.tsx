@@ -23,7 +23,7 @@ import {
   Loader2,
 } from 'lucide-react'
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend'
+const API_BASE = '/backend'
 
 // ─── Types ──────────────────────────────────────────────────────────────
 

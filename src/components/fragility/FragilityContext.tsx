@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
+const API_BASE = '/backend';
 
 // Types
 export interface FragilityState {

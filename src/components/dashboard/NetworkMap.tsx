@@ -27,7 +27,7 @@ interface GraphData {
   };
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend';
+const BACKEND_URL = '/backend';
 
 export default function NetworkMap() {
   const [data, setData] = useState<GraphData>({ nodes: [], links: [] });

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { useRouter, usePathname } from 'next/navigation'
 
 // Backend API URL — proxied through Vercel rewrites (/backend -> api.ganoalpha.com)
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '/backend'
+const BACKEND_URL = '/backend'
 
 interface User {
   user_id: string
