@@ -5,7 +5,7 @@ import { MessageSquarePlus, X, Send, Camera, Loader2, CheckCircle } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.gano.ai';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
 
 type FeedbackType = 'bug' | 'feature' | 'question' | 'praise' | 'other';
 type Priority = 'low' | 'medium' | 'high' | 'critical';

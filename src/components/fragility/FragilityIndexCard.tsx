@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Info } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.gano.ai';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/backend';
 
 interface FragilityData {
   score: number;
