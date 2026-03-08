@@ -5,12 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { OnboardingProvider, WelcomeModal, TourStyles, RestartTourButton } from "@/components/onboarding";
 import Link from "next/link";
-import { User, LogOut, Shield, LayoutDashboard, FileText } from "lucide-react";
+import { User, LogOut, Shield, LayoutDashboard, FileText, TrendingUp } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/fragility", label: "Fragility", icon: Shield },
   { href: "/track-record", label: "Track Record", icon: FileText },
+  { href: "/trading", label: "Trading", icon: TrendingUp },
 ];
 
 export default function DashboardLayout({
